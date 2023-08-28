@@ -98,6 +98,26 @@ options.add_argument('--disable-translate')
 options.add_argument('--ignore-certificate-errors')
 # driver=webdriver.Chrome(options=options)
 driver = webdriver.Chrome(service=Service(chrome_a_), options=options)
+
+
+def check_for_captcha():
+    try:
+        captcha_iframe = driver.find_element(By.CSS_SELECTOR, 'iframe[title="recaptcha challenge expires in two minutes"]')
+        print('found captcha_iframe')
+        driver.switch_to.frame(captcha_iframe)
+        print('found iframe_driver')
+        solve_captcha_frame = driver.find_element(By.CSS_SELECTOR, 'div[class="button-holder help-button-holder"]')
+        print('found solve_captcha_frame')
+        # driver.switch_to(solve_captcha_frame)
+        # print('switched to solve_captcha_frame')
+        captcha = driver.find_element(By.CSS_SELECTOR, '#solver-button')
+        print('found captcha!!')
+        captcha.click()
+        time.sleep(5)
+        captcha.click()
+        return True
+    except: return False
+
 while True:
     driver.get(entrada)
     shadow = Shadow(driver)
@@ -255,6 +275,7 @@ while True:
             continue
         while True:
             try:
+                print(check_for_captcha())
                 sectors = driver.find_elements(
                     By.XPATH, '//*[@id="sectors-list"]/li')
                 if ar == 'f':
@@ -286,6 +307,8 @@ while True:
         vsel = '|'.join([f'//*[@data-price-desc="{bnm}"]/tspan' for bnm in bnms])
         try:
             ensure_check_elem('//*[@class="newZoneClick"]',tmt=4)
+            print('OPACHKI!!!')
+            time.sleep(100)
         except:
             print('No tickets')
             continue
