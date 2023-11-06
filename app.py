@@ -1,6 +1,7 @@
 import undetected_chromedriver as webdriver
 from selenium import webdriver
 import time
+import os, sys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.chrome.service import Service
@@ -96,8 +97,12 @@ options.add_experimental_option("excludeSwitches", ['enable-automation'])
 options.add_argument('--disable-features=TranslateUI')
 options.add_argument('--disable-translate')
 options.add_argument('--ignore-certificate-errors')
+extension_path = os.getcwd() + '/NopeCHA'
+options.add_argument(f"--load-extension={extension_path}")
 # driver=webdriver.Chrome(options=options)
 driver = webdriver.Chrome(service=Service(chrome_a_), options=options)
+
+driver.get('https://nopecha.com/setup#sub_1NnGb4CRwBwvt6ptDqqrDlul|enabled=true|disabled_hosts=%5B%5D|hcaptcha_auto_open=true|hcaptcha_auto_solve=true|hcaptcha_solve_delay=true|hcaptcha_solve_delay_time=3000|recaptcha_auto_open=true|recaptcha_auto_solve=true|recaptcha_solve_delay=true|recaptcha_solve_delay_time=1000|recaptcha_solve_method=Image|funcaptcha_auto_open=true|funcaptcha_auto_solve=true|funcaptcha_solve_delay=true|funcaptcha_solve_delay_time=0|awscaptcha_auto_open=true|awscaptcha_auto_solve=true|awscaptcha_solve_delay=true|awscaptcha_solve_delay_time=0|textcaptcha_auto_solve=true|textcaptcha_solve_delay=true|textcaptcha_solve_delay_time=0|textcaptcha_image_selector=|textcaptcha_input_selector=')
 
 
 def check_for_captcha():
@@ -275,7 +280,12 @@ while True:
             continue
         while True:
             try:
-                print(check_for_captcha())
+                try:
+                    driver.find_element(
+                        By.XPATH, '//*[@id="onetrust-accept-btn-handler"]').click()
+                    driver.execute_script("document.querySelector('div.onetrust-pc-dark-filter.ot-fade-in').remove()")
+                except:
+                    pass
                 sectors = driver.find_elements(
                     By.XPATH, '//*[@id="sectors-list"]/li')
                 if ar == 'f':
@@ -307,8 +317,6 @@ while True:
         vsel = '|'.join([f'//*[@data-price-desc="{bnm}"]/tspan' for bnm in bnms])
         try:
             ensure_check_elem('//*[@class="newZoneClick"]',tmt=4)
-            print('OPACHKI!!!')
-            time.sleep(100)
         except:
             print('No tickets')
             continue
@@ -344,6 +352,7 @@ while True:
                 pass
             time.sleep(.5)
         if not tk_niet:
+            print('no tickets available')
             continue
 
         ensure_check_elem('//*[@id="cuerpo-resumen-compra"]/tr')
@@ -383,4 +392,3 @@ while True:
                 pass
         else:
             print(f'tickets aren\'t near each other, or Total price {total/ent}/ticket not in range ')
-        
