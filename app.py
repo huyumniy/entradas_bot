@@ -2,16 +2,94 @@ import undetected_chromedriver as webdriver
 from selenium import webdriver
 import time
 import os, sys
+import tempfile
+import requests
+import soundfile as sf
+import sounddevice as sd
+import shutil
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.chrome.service import Service
 from pyshadow.main import Shadow
 from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from random import choice
 import logging
 from webdriver_manager.core.logger import __logger as wdm_logger
 
 entrada = "https://www.entradas.com/artist/real-madrid-c-f/"
+
+class ProxyExtension:
+    manifest_json = """
+    {
+        "version": "1.0.0",
+        "manifest_version": 2,
+        "name": "Chrome Proxy",
+        "permissions": [
+            "proxy",
+            "tabs",
+            "unlimitedStorage",
+            "storage",
+            "<all_urls>",
+            "webRequest",
+            "webRequestBlocking"
+        ],
+        "background": {"scripts": ["background.js"]},
+        "minimum_chrome_version": "76.0.0"
+    }
+    """
+
+    background_js = """
+    var config = {
+        mode: "fixed_servers",
+        rules: {
+            singleProxy: {
+                scheme: "http",
+                host: "%s",
+                port: %d
+            },
+            bypassList: ["localhost"]
+        }
+    };
+
+    chrome.proxy.settings.set({value: config, scope: "regular"}, function() {});
+
+    function callbackFn(details) {
+        return {
+            authCredentials: {
+                username: "%s",
+                password: "%s"
+            }
+        };
+    }
+
+    chrome.webRequest.onAuthRequired.addListener(
+        callbackFn,
+        { urls: ["<all_urls>"] },
+        ['blocking']
+    );
+    """
+
+    def __init__(self, host, port, user, password):
+        self._dir = os.path.normpath(tempfile.mkdtemp())
+
+        manifest_file = os.path.join(self._dir, "manifest.json")
+        with open(manifest_file, mode="w") as f:
+            f.write(self.manifest_json)
+        background_js = self.background_js % (host, int(port), user, password)
+        background_file = os.path.join(self._dir, "background.js")
+        with open(background_file, mode="w") as f:
+            f.write(background_js)
+
+    @property
+    def directory(self):
+        return self._dir
+
+    def __del__(self):
+        shutil.rmtree(self._dir)
+
+
 
 def ensure_check_elem(selector, methode=By.XPATH, tmt=20, click=False):
     global driver
@@ -54,37 +132,6 @@ def check():
         except Exception as r:
             print(r)
 
-import pyautogui,time,threading
-def solveit():
-    while True:
-        try:
-            b=pyautogui.locateCenterOnScreen('b.png')
-            if b != None:
-                pyautogui.click(b)
-                print('found b')
-                try:
-                    e=pyautogui.locateCenterOnScreen('e.png')
-                except:
-                    pass
-        except:
-            continue
-        time.sleep(2)
-        try:
-            r=pyautogui.locateCenterOnScreen('r.png')
-            if r != None:
-                pyautogui.click(r)
-                print('found r')
-                try:
-                    e=pyautogui.locateCenterOnScreen('e.png')
-                except:
-                    pass
-        except:
-            continue
-        time.sleep(2)
-b = threading.Thread(name='background', target=solveit)
-
-b.start()
-wdm_logger.setLevel(logging.WARNING)
 
 chrome_a_ = ChromeDriverManager().install()
 
@@ -98,30 +145,32 @@ options.add_argument('--disable-features=TranslateUI')
 options.add_argument('--disable-translate')
 options.add_argument('--ignore-certificate-errors')
 extension_path = os.getcwd() + '/NopeCHA'
-options.add_argument(f"--load-extension={extension_path}")
+proxy = input('proxy (host:port:user:password): ')
+proxy_change_url = input('change ip url: ')
+proxy_extension = ProxyExtension(*(proxy.split(':')))
+options.add_argument(f"--load-extension={proxy_extension.directory},{extension_path}")
+
 # driver=webdriver.Chrome(options=options)
 driver = webdriver.Chrome(service=Service(chrome_a_), options=options)
 
 driver.get('https://nopecha.com/setup#sub_1NnGb4CRwBwvt6ptDqqrDlul|enabled=true|disabled_hosts=%5B%5D|hcaptcha_auto_open=true|hcaptcha_auto_solve=true|hcaptcha_solve_delay=true|hcaptcha_solve_delay_time=3000|recaptcha_auto_open=true|recaptcha_auto_solve=true|recaptcha_solve_delay=true|recaptcha_solve_delay_time=1000|recaptcha_solve_method=Image|funcaptcha_auto_open=true|funcaptcha_auto_solve=true|funcaptcha_solve_delay=true|funcaptcha_solve_delay_time=0|awscaptcha_auto_open=true|awscaptcha_auto_solve=true|awscaptcha_solve_delay=true|awscaptcha_solve_delay_time=0|textcaptcha_auto_solve=true|textcaptcha_solve_delay=true|textcaptcha_solve_delay_time=0|textcaptcha_image_selector=|textcaptcha_input_selector=')
 
 
-def check_for_captcha():
+def change_ip(url):
     try:
-        captcha_iframe = driver.find_element(By.CSS_SELECTOR, 'iframe[title="recaptcha challenge expires in two minutes"]')
-        print('found captcha_iframe')
-        driver.switch_to.frame(captcha_iframe)
-        print('found iframe_driver')
-        solve_captcha_frame = driver.find_element(By.CSS_SELECTOR, 'div[class="button-holder help-button-holder"]')
-        print('found solve_captcha_frame')
-        # driver.switch_to(solve_captcha_frame)
-        # print('switched to solve_captcha_frame')
-        captcha = driver.find_element(By.CSS_SELECTOR, '#solver-button')
-        print('found captcha!!')
-        captcha.click()
-        time.sleep(5)
-        captcha.click()
-        return True
-    except: return False
+        response = requests.get(url)
+
+        # Check if the request was successful (status code 200)
+        if response.status_code == 200:
+            # You can print the response content or return it as needed
+            # For example, printing the response content:
+            print(response.text)
+        else:
+            print(f"Request failed with status code {response.status_code}")
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred: {e}")
+
+
 
 while True:
     driver.get(entrada)
@@ -136,7 +185,7 @@ while True:
         except:
             time.sleep(2)
             dv_tmt += 1
-    try:ensure_check_elem('//*[contains(@href,"tSele")]',tmt=1, click=True)
+    try: ensure_check_elem('//*[contains(@href,"tSele")]',tmt=1, click=True)
     except:pass
     ensure_check_elem('//div[@role="link"][.//*[contains(text(),"omp")]]')
     lnks = []
@@ -223,18 +272,22 @@ while True:
                 pass
     while True:
 
-        driver.delete_all_cookies()
+        # driver.delete_all_cookies()
         driver.refresh()
         try:
             ensure_check_elem('//*[@class="active"][@id="seleccion-entradas"]')
         except:
-            try:
-                ensure_check_elem('//*[contains(text(),"nible a par")]',tmt=1)
-                print('No sale')
-                break
-            except:
-                print('ISK0')
-                break
+            print('403. changing ip')
+            change_ip(proxy_change_url)
+            time.sleep(30)
+            continue
+            # try:
+            #     ensure_check_elem('//*[contains(text(),"nible a par")]',tmt=1)
+            #     print('No sale')
+            #     break
+            # except:
+            #     print('ISK0')
+            #     break
 
         while True:
             try:
@@ -248,7 +301,7 @@ while True:
                 dpdwn = driver.find_element(
                     By.XPATH, '//*[@class="active"][@id="seleccion-entradas"]')
             except:
-                break
+                pass
             if madridista:
                 try:
                     ensure_check_elem('//*[@id="select-ticket-container"]//a[contains(text(),"ista Pr")]',click=True)
@@ -273,6 +326,12 @@ while True:
                 driver.find_element(By.ID, 'alert-ok').click()
             except:
                 pass
+            break
+        try:
+            driver.find_element(By.XPATH, '//*[@class="active"][@id="seleccion-entradas"]')
+            continue
+        except:
+            pass
         try:
             ensure_check_elem('//*[@id="sectors-list"]/li',tmt=2)
         except:
@@ -336,13 +395,20 @@ while True:
                 pass
         tk_niet = True
 
+        max_attempts = 5
+        attempts = 0
         while True:
             try:
                 tur = driver.find_element(By.ID, 'alert-ok').click()
                 tk_niet = False
                 break
             except:
-                pass
+                attempts += 1
+                time.sleep(1)
+                if attempts >= max_attempts:
+                    print("Exceeded maximum attempts. Breaking from the loop.")
+                    tk_niet = False
+                    break
 
             try:
                 driver.find_element(By.XPATH, '//*[@class="seatSelected"]')
@@ -382,6 +448,9 @@ while True:
             try:
                 u = driver.find_element(
                     By.XPATH, '//*[@class="nominative-row-title"]')
+                data, fs = sf.read('noti.wav', dtype='float32')  
+                sd.play(data, fs)
+                status = sd.wait()
                 lastcom = input(
                     'q: to quit or ENTER to start selecting again: ').lower()
                 if lastcom.strip() == 'q':
