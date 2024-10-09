@@ -1,5 +1,4 @@
 import undetected_chromedriver as webdriver
-from selenium import webdriver
 import time
 import os, sys
 import datetime
@@ -7,17 +6,20 @@ import tempfile
 import requests
 import soundfile as sf
 import sounddevice as sd
+import random
+import asyncio
 import shutil
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.chrome.service import Service
 from pyshadow.main import Shadow
-from webdriver_manager.chrome import ChromeDriverManager
+# from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException
 from random import choice
 import logging
-from webdriver_manager.core.logger import __logger as wdm_logger
+# from webdriver_manager.core.logger import __logger as wdm_logger
 
 entrada = "https://www.entradas.com/artist/real-madrid-c-f/"
 
@@ -90,7 +92,45 @@ class ProxyExtension:
     def __del__(self):
         shutil.rmtree(self._dir)
 
+def wait_for_element(driver, selector, timeout=10, xpath=False, debugMode=False):
+    try:
+        if xpath:
+            element = WebDriverWait(driver, timeout).until(EC.element_to_be_clickable((By.XPATH, selector)))
+        else:
+            element = WebDriverWait(driver, timeout).until(EC.element_to_be_clickable((By.CSS_SELECTOR, selector)))
+        return element
+    except Exception as e:
+        if debugMode: print("selector: ", selector, "\n", e)
+        return False
 
+
+def check_for_element(driver, selector, click=False, xpath=False, debug=False):
+    try:
+        if xpath:
+            element = driver.find_element(By.XPATH, selector)
+        else:
+            element = driver.find_element(By.CSS_SELECTOR, selector)
+        if click: 
+            driver.execute_script("arguments[0].scrollIntoView();", element)
+            # slow_mouse_move_to_element(driver, element)
+            element.click()
+        return element
+    except Exception as e: 
+        if debug: print("selector: ", selector, "\n", e)
+        return False
+    
+
+def check_for_elements(driver_element, selector, xpath=False, debugMode=False):
+    try:
+        if xpath:
+            elements = driver_element.find_elements(By.XPATH, selector)
+        else:
+            elements = driver_element.find_elements(By.CSS_SELECTOR, selector)
+        return elements
+    except Exception as e:
+        if debugMode: print("selector: ", selector, "\n", e)
+        return False
+    
 
 def ensure_check_elem(selector, methode=By.XPATH, tmt=20, click=False):
     global driver
@@ -134,26 +174,83 @@ def check():
             print(r)
 
 
+def parse_data_from_file(file_path):
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+
+    # Parse each line into (email, password, proxy)
+    data = ''
+    for line in lines:
+        data += line + '\n'
+    
+    return data
+
+
 
 options = webdriver.ChromeOptions()
 options.add_argument("--log-level=3")
 options.add_argument('--disable-infobars')
-options.add_argument('--disable-gpu')
-options.add_extension('./bcsh.crx')
-options.add_experimental_option("excludeSwitches", ['enable-automation'])
 options.add_argument('--disable-features=TranslateUI')
 options.add_argument('--disable-translate')
 options.add_argument('--ignore-certificate-errors')
-extension_path = os.getcwd() + '/NopeCHA'
-proxy = input('proxy (host:port:user:password): ')
-proxy_change_url = input('change ip url: ')
-proxy_extension = ProxyExtension(*(proxy.split(':')))
-options.add_argument(f"--load-extension={proxy_extension.directory},{extension_path}")
+options.add_argument('--lang=EN')
+nopecha_path = os.getcwd() + '/NopeCHA'
+extension_path = os.getcwd() + '/BP-Proxy-Switcher-Chrome'
+options.add_argument(f"--load-extension={extension_path},{nopecha_path}")
+prefs = {"credentials_enable_service": False,
+    "profile.password_manager_enabled": False}
+options.add_experimental_option("prefs", prefs)
+driver = webdriver.Chrome(
+    options=options,
+    enable_cdp_events=True
+)
 
-# driver=webdriver.Chrome(options=options)
-driver = webdriver.Chrome(options=options)
+driver.get('https://nopecha.com/setup#zzfqud0q4yw58yyb|keys=|enabled=true|disabled_hosts=|hcaptcha_auto_open=true|hcaptcha_auto_solve=true|hcaptcha_solve_delay=true|hcaptcha_solve_delay_time=3000|recaptcha_auto_open=true|recaptcha_auto_solve=true|recaptcha_solve_delay=false|recaptcha_solve_delay_time=2000|funcaptcha_auto_open=true|funcaptcha_auto_solve=true|funcaptcha_solve_delay=true|funcaptcha_solve_delay_time=1000|awscaptcha_auto_open=false|awscaptcha_auto_solve=false|awscaptcha_solve_delay=true|awscaptcha_solve_delay_time=1000|turnstile_auto_solve=true|turnstile_solve_delay=true|turnstile_solve_delay_time=1000|perimeterx_auto_solve=false|perimeterx_solve_delay=true|perimeterx_solve_delay_time=1000|textcaptcha_auto_solve=false|textcaptcha_solve_delay=true|textcaptcha_solve_delay_time=100|textcaptcha_image_selector=|textcaptcha_input_selector=')
 
-driver.get('https://nopecha.com/setup#sub_1NnGb4CRwBwvt6ptDqqrDlul|enabled=true|disabled_hosts=%5B%5D|hcaptcha_auto_open=true|hcaptcha_auto_solve=true|hcaptcha_solve_delay=true|hcaptcha_solve_delay_time=3000|recaptcha_auto_open=true|recaptcha_auto_solve=true|recaptcha_solve_delay=true|recaptcha_solve_delay_time=1000|recaptcha_solve_method=Image|funcaptcha_auto_open=true|funcaptcha_auto_solve=true|funcaptcha_solve_delay=true|funcaptcha_solve_delay_time=0|awscaptcha_auto_open=true|awscaptcha_auto_solve=true|awscaptcha_solve_delay=true|awscaptcha_solve_delay_time=0|textcaptcha_auto_solve=true|textcaptcha_solve_delay=true|textcaptcha_solve_delay_time=0|textcaptcha_image_selector=|textcaptcha_input_selector=')
+
+driver.get('chrome://extensions/')
+time.sleep(1)
+
+# Example script to retrieve extensions
+script_array = """
+            const callback = arguments[0];
+            chrome.management.getAll((extensions) => {
+                callback(extensions);
+            });
+        """
+
+# Execute the JavaScript and get the result
+extensions = driver.execute_async_script(script_array)
+filtered_extensions = [extension for extension in extensions if "BP Proxy Switcher" in extension['name']]
+
+vpn_id = [extension['id'] for extension in filtered_extensions if 'id' in extension][0]
+vpn_url = f'chrome-extension://{vpn_id}/popup.html'
+driver.get(vpn_url)
+proxies = parse_data_from_file('proxies.txt')
+delete_tab = driver.find_element(By.XPATH, '//*[@id="deleteOptions"]')
+delete_tab.click()
+time.sleep(1)
+driver.find_element(By.XPATH, '//*[@id="privacy"]/div[1]/input').click()
+driver.find_element(By.XPATH, '//*[@id="privacy"]/div[2]/input').click()
+driver.find_element(By.XPATH, '//*[@id="privacy"]/div[4]/input').click()
+driver.find_element(By.XPATH, '//*[@id="privacy"]/div[7]/input').click()
+driver.find_element(By.XPATH, '//*[@id="optionsOK"]').click()
+time.sleep(1)
+edit = driver.find_element(By.XPATH, '//*[@id="editProxyList"]/small/b')
+edit.click()
+time.sleep(1)
+text_area = driver.find_element(By.XPATH, '//*[@id="proxiesTextArea"]')
+text_area.send_keys(proxies)
+time.sleep(1)
+ok_button = driver.find_element(By.XPATH, '//*[@id="addProxyOK"]')
+ok_button.click()
+time.sleep(1)
+proxy_switch_list = driver.find_elements(By.CSS_SELECTOR, '#proxySelectDiv > div > div > ul > li')
+proxy_switch_list[random.randint(2, len(proxy_switch_list))].click()
+time.sleep(5)
+proxy_auto_reload_checkbox = driver.find_element(By.XPATH, '//*[@id="autoReload"]')
+proxy_auto_reload_checkbox.click()
+time.sleep(2)
 
 
 def change_ip(url):
@@ -171,41 +268,41 @@ def change_ip(url):
         print(f"An error occurred: {e}")
 
 
-
 while True:
     try:
 
-        driver.get(entrada)
-        shadow = Shadow(driver)
-        dv_tmt = 0
-        while True:
-            if dv_tmt >= 3:
-                break
-            try:
-                shadow.find_element('#cmpwelcomebtnyes a').click()
-                break
-            except:
-                time.sleep(2)
-                dv_tmt += 1
-        try: ensure_check_elem('//*[contains(@href,"tSele")]',tmt=1, click=True)
-        except:pass
-        ensure_check_elem('//div[@role="link"][.//*[contains(text(),"omp")]]')
-        lnks = []
-        print('ID , Match')
-        for i, li in enumerate(driver.find_elements(By.XPATH, '//div[@role="link"][.//*[contains(text(),"omp")]]')):
-            lnks.append(li.find_element(
-                By.XPATH, '..//*[contains(text(),"omp")]').get_attribute('href'))
-            print(i, li.find_element(By.XPATH, '..//h2').text)
-        while True:
-            try:
-                id1 = int(input('ID : '))
-                try:
-                    if id1 in range(len(lnks)):
-                        break
-                except:
-                    raise Exception('INVLD 1')
-            except:
-                print('Please insert correct values')
+        # driver.get(entrada)
+        # shadow = Shadow(driver)
+        # dv_tmt = 0
+        # while True:
+        #     if dv_tmt >= 3:
+        #         break
+        #     try:
+        #         shadow.find_element('#cmpwelcomebtnyes a').click()
+        #         break
+        #     except:
+        #         time.sleep(2)
+        #         dv_tmt += 1
+        # try: ensure_check_elem('//*[contains(@href,"tSele")]',tmt=1, click=True)
+        # except:pass
+        # ensure_check_elem('//div[@role="link"][.//*[contains(text(),"omp")]]')
+        # lnks = []
+        # print('ID , Match')
+        # for i, li in enumerate(check_for_elements(driver, '//div[@role="link"][.//*[contains(text(),"omp")]]', xpath=True)):
+        #     lnks.append(li.find_element(
+        #         By.XPATH, '..//*[contains(text(),"omp")]').get_attribute('href'))
+        #     print(i, li.find_element(By.XPATH, '..//h2').text)
+        # while True:
+        #     try:
+        #         id1 = int(input('ID : '))
+        #         try:
+        #             if id1 in range(len(lnks)):
+        #                 break
+        #         except:
+        #             raise Exception('INVLD 1')
+        #     except:
+        #         print('Please insert correct values')
+
         madridista = input(
             'Madridista [Y:N] (default is N):').lower().strip() == "y"
         if madridista:
@@ -253,16 +350,25 @@ while True:
             except:
                 print('Please insert correct values')
 
-        driver.get(lnks[id1])
-        ensure_check_elem('//button[./span[contains(text(),"ar en")]]', click=True)
-        while len(driver.window_handles) == 1:
-            time.sleep(1)
-        while len(driver.window_handles) != 1:
-            try:
-                driver.switch_to.window(driver.window_handles[0])
-            except:
-                continue
-            driver.close()
+        # driver.get(lnks[id1])
+        # ensure_check_elem('//button[./span[contains(text(),"ar en")]]', click=True)
+        no_stadium = True
+        while no_stadium:
+            for index in range(len(driver.window_handles)):
+                driver.switch_to.window(driver.window_handles[index])  # Switch to the tab
+                try:
+                    
+                    element = check_for_element(driver, '//*[@id="num-entradas"]', xpath=True)  # Replace with the appropriate method
+                    if element:
+                        print(f"Element found in tab {index + 1} ({driver.current_url}): {element.text}")
+                        no_stadium = False
+                except NoSuchElementException:
+                    print(f"Element not found in tab {index + 1} ({driver.current_url})")
+                except Exception as e: 
+                    print(e)
+            time.sleep(5)
+        print('FOUND STADIUM')
+
         while True:
             try:
                 r = driver.title
@@ -272,15 +378,16 @@ while True:
                     driver.switch_to.window(driver.window_handles[0])
                 except:
                     pass
+        
         while True:
 
             # driver.delete_all_cookies()
             driver.refresh()
+            while 'laliga.queue-it.net' in driver.current_url: time.sleep(1)
             try:
-                ensure_check_elem('//*[@class="active"][@id="seleccion-entradas"]')
+                ensure_check_elem('//*[@class="active"][@id="seleccion-entradas"] | //*[@id="num-entradas"]')
             except:
-                print('403. changing ip')
-                change_ip(proxy_change_url)
+                print('Can\'t find stadium page. Waiting for 30 sec.')
                 time.sleep(30)
                 continue
                 # try:
@@ -293,32 +400,39 @@ while True:
 
             while True:
                 try:
-                    driver.find_element(
-                        By.XPATH, '//*[@id="onetrust-accept-btn-handler"]').click()
+                    check_for_element(driver, '//*[@id="onetrust-accept-btn-handler"]', xpath=True, click=True)
                     driver.execute_script("document.querySelector('div.onetrust-pc-dark-filter.ot-fade-in').remove()")
                 except:
                     pass
                 
                 try:
-                    dpdwn = driver.find_element(
-                        By.XPATH, '//*[@class="active"][@id="seleccion-entradas"]')
+                    dpdwn = check_for_element(driver, '//*[@class="active"][@id="seleccion-entradas"]', xpath=True)
+                except:
+                    pass
+                try:
+                    ensure_check_elem('#alert-ok', tmt=1, methode=By.CSS_SELECTOR, click=True)
                 except:
                     pass
                 if madridista:
                     try:
                         ensure_check_elem('//*[@id="select-ticket-container"]//a[contains(text(),"ista Pr")]',click=True)
                         ensure_check_elem('//*[@id="nsocioG"]',click=True).send_keys(numero_mad)
-                        ensure_check_elem('//*[@id="pinsocioG"]',click=True).send_keys(con_mad)
-                        Select(driver.find_element(
-                            By.XPATH, '//*[@id="num-entradas"]')).select_by_index(ent)
+                        ensure_check_elem('//*[@id="nsocioG"]',click=True).send_keys(con_mad)
+                        Select(check_for_element(driver, '//*[@id="num-entradas"]', xpath=True)).select_by_index(ent)
                     except:
                         pass
                 else:
                     try:
+                        wait_for_element(driver, '//*[@id="num-entradas"]', xpath=True, timeout=5)
+                        check_for_element(driver, '#no-socio-abonado', click=True)
                         Select(driver.find_element(
                             By.XPATH, '//*[@id="num-entradas"]')).select_by_index(ent)
-                    except:
-                        pass
+                    except Exception as e: 
+                        continue
+                try:
+                    ensure_check_elem('#alert-ok', tmt=1, methode=By.CSS_SELECTOR, click=True)
+                except:
+                    pass
                 try:
                     driver.find_element(
                         By.XPATH, '//*[@id="boton-seleccion-entradas"]').click()
@@ -366,7 +480,7 @@ while True:
                     pass
             
             bnms = []
-            for b in driver.find_elements(By.XPATH, '//*[@id="regular-price-list"]/li'):
+            for b in driver.find_elements(By.XPATH, '//*[@id="regular-price-list"]/li | //*[@id="vip-price-list"]/li'):
                 dp = b.get_attribute('data-price')
                 dpd = b.get_attribute('data-price-desc')
                 try:
@@ -436,7 +550,10 @@ while True:
                 sts = [s for s in range(mn_as, mx_as+1) if s % 2 == 0]
             else:
                 sts = [s for s in range(mn_as, mx_as+1) if s % 2 != 0]
-            total=float(ensure_check_elem('//*[@id="total-price"]').text.split(' ')[0].replace(',','.'))
+            try: total=float(ensure_check_elem('//*[@id="total-price"]').text.split(' ')[0].replace(',',''))
+            except: pass
+            try: total=float(ensure_check_elem('//*[@id="total-price"]').text.split(' ')[0].replace(',','.'))
+            except: pass
             # if not(total>minprc*ent and maxprc*ent>total):
             #     print('problem')
             if list(set(sts)) == list(set(asientos)) and (total>minprc*ent and maxprc*ent>total):
@@ -445,8 +562,8 @@ while True:
                     ensure_check_elem(
                         '//*[@id="onetrust-accept-btn-handler"]', tmt=20, click=True)
                     driver.execute_script("document.querySelector('div.onetrust-pc-dark-filter.ot-fade-in').remove()")
-                except:
-                    pass
+                except Exception as e:
+                    print(e)
                 try:
                     u = driver.find_element(
                         By.XPATH, '//*[@class="nominative-row-title"]')
@@ -459,8 +576,8 @@ while True:
                         driver.quit()
                         exit()
                     break
-                except:
-                    pass
+                except Exception as e:
+                    print(e)
             else:
                 print(f'tickets aren\'t near each other, or Total price {total/ent}/ticket not in range ')
     except Exception as e:
@@ -471,3 +588,4 @@ while True:
             with open('error_log.txt', 'a') as file:
                 file.write(error_message + '\n')
         except: pass
+    

@@ -1,0 +1,72 @@
+proxy.soax.com:9126:VvvCEm3JE6OIv87c:mix;it;;;naples
+proxy.soax.com:9101:VvvCEm3JE6OIv87c:mix;it;;;rome
+proxy.soax.com:9015:VvvCEm3JE6OIv87c:mix;it;;;bari
+proxy.soax.com:9063:VvvCEm3JE6OIv87c:mix;it;;;milan
+proxy.soax.com:9133:A4JFz3nJIoVgtCa73:mix;it;;;catania
+proxy.soax.com:9057:VvvCEm3JE6OIv87c:mix;it;;;palermo
+proxy.soax.com:9007:VvvCEm3JE6OIv87c:mix;it;;;turin
+proxy.soax.com:9018:VvvCEm3JE6OIv87c:mix;it;;;florence
+proxy.soax.com:9077:VvvCEm3JE6OIv87c:mix;it;;;bologna
+proxy.soax.com:9261:VvvCEm3JE6OIv87c:mix;it;;;genoa
+proxy.soax.com:9165:VvvCEm3JE6OIv87c:mix;it;;;verona
+proxy.soax.com:9207:VvvCEm3JE6OIv87c:mix;it;;;taranto
+proxy.soax.com:9059:VvvCEm3JE6OIv87c:mix;it;;;brescia
+proxy.soax.com:9302:VvvCEm3JE6OIv87c:mix;it;;;parma
+proxy.soax.com:9171:VvvCEm3JE6OIv87c:mix;it;;;cagliari
+proxy.soax.com:9259:VvvCEm3JE6OIv87c:mix;it;;;padova
+proxy.soax.com:9024:VvvCEm3JE6OIv87c:mix;it;;;salerno
+proxy.soax.com:9178:VvvCEm3JE6OIv87c:mix;it;;;messina
+proxy.soax.com:9290:VvvCEm3JE6OIv87c:mix;it;;;pescara
+proxy.soax.com:9003:VvvCEm3JE6OIv87c:mix;it;;;mascalucia
+proxy.soax.com:9183:VvvCEm3JE6OIv87c:mix;it;;;ancona
+proxy.soax.com:9036:VvvCEm3JE6OIv87c:mix;it;;;reggio emilia
+proxy.soax.com:9197:VvvCEm3JE6OIv87c:mix;it;;;santarpino
+proxy.soax.com:9271:VvvCEm3JE6OIv87c:mix;it;;;orta di atella
+proxy.soax.com:9272:VvvCEm3JE6OIv87c:mix;it;;;venice
+proxy.soax.com:9125:VvvCEm3JE6OIv87c:mix;it;;;acerra
+proxy.soax.com:9265:VvvCEm3JE6OIv87c:mix;it;;;modena
+proxy.soax.com:9247:VvvCEm3JE6OIv87c:mix;it;;;rende
+proxy.soax.com:9246:VvvCEm3JE6OIv87c:mix;it;;;bergamo
+proxy.soax.com:9299:VvvCEm3JE6OIv87c:mix;it;;;caserta
+proxy.soax.com:9066:VvvCEm3JE6OIv87c:mix;it;;;perugia
+proxy.soax.com:9221:VvvCEm3JE6OIv87c:mix;it;;;ottaviano
+proxy.soax.com:9006:VvvCEm3JE6OIv87c:mix;it;;;pomigliano darco
+proxy.soax.com:9308:VvvCEm3JE6OIv87c:mix;it;;;catanzaro
+proxy.soax.com:9129:VvvCEm3JE6OIv87c:mix;it;;;giugliano in campania
+proxy.soax.com:9055:VvvCEm3JE6OIv87c:mix;it;;;nola
+proxy.soax.com:9119:VvvCEm3JE6OIv87c:mix;it;;;nocera superiore
+proxy.soax.com:9211:VvvCEm3JE6OIv87c:mix;it;;;reggio calabria
+proxy.soax.com:9025:VvvCEm3JE6OIv87c:mix;it;;;nocera inferiore
+proxy.soax.com:9220:VvvCEm3JE6OIv87c:mix;it;;;misterbianco
+proxy.soax.com:9205:VvvCEm3JE6OIv87c:mix;it;;;angri
+proxy.soax.com:9017:VvvCEm3JE6OIv87c:mix;it;;;lamezia terme
+proxy.soax.com:9092:VvvCEm3JE6OIv87c:mix;it;;;monza
+proxy.soax.com:9250:VvvCEm3JE6OIv87c:mix;it;;;modugno
+proxy.soax.com:9200:VvvCEm3JE6OIv87c:mix;it;;;surbo
+proxy.soax.com:9269:VvvCEm3JE6OIv87c:mix;it;;;treviso
+proxy.soax.com:9248:VvvCEm3JE6OIv87c:mix;it;;;pisa
+proxy.soax.com:9291:VvvCEm3JE6OIv87c:mix;it;;;cava de tirreni
+proxy.soax.com:9108:VvvCEm3JE6OIv87c:mix;it;;;santantonio abate
+proxy.soax.com:9219:VvvCEm3JE6OIv87c:mix;it;;;lucca
+proxy.soax.com:9260:VvvCEm3JE6OIv87c:mix;it;;;rimini
+proxy.soax.com:9307:VvvCEm3JE6OIv87c:mix;it;;;cosenza
+proxy.soax.com:9286:VvvCEm3JE6OIv87c:mix;it;;;somma vesuviana
+proxy.soax.com:9042:VvvCEm3JE6OIv87c:mix;it;;;sarno
+proxy.soax.com:9023:VvvCEm3JE6OIv87c:mix;it;;;san giuseppe vesuviano
+proxy.soax.com:9274:VvvCEm3JE6OIv87c:mix;it;;;novara
+proxy.soax.com:9282:VvvCEm3JE6OIv87c:mix;it;;;trieste
+proxy.soax.com:9238:VvvCEm3JE6OIv87c:mix;it;;;lissone
+proxy.soax.com:9082:VvvCEm3JE6OIv87c:mix;it;;;vicenza
+proxy.soax.com:9237:VvvCEm3JE6OIv87c:mix;it;;;afragola
+proxy.soax.com:9267:VvvCEm3JE6OIv87c:mix;it;;;crotone
+proxy.soax.com:9134:VvvCEm3JE6OIv87c:mix;it;;;macerata
+proxy.soax.com:9194:VvvCEm3JE6OIv87c:mix;it;;;altamura
+proxy.soax.com:9116:VvvCEm3JE6OIv87c:mix;it;;;livorno
+proxy.soax.com:9162:VvvCEm3JE6OIv87c:mix;it;;;torre del greco
+proxy.soax.com:9014:VvvCEm3JE6OIv87c:mix;it;;;pontirolo nuovo
+proxy.soax.com:9285:VvvCEm3JE6OIv87c:mix;it;;;verdellino
+proxy.soax.com:9317:VvvCEm3JE6OIv87c:mix;it;;;aci catena
+proxy.soax.com:9216:VvvCEm3JE6OIv87c:mix;it;;;osimo
+proxy.soax.com:9185:VvvCEm3JE6OIv87c:mix;it;;;iesi
+proxy.soax.com:9153:VvvCEm3JE6OIv87c:mix;it;;;paola
+proxy.soax.com:9127:VvvCEm3JE6OIv87c:mix;it;;;como
