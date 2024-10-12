@@ -1,0 +1,25 @@
+{
+    "manifest_version": 3,
+    "name": "Entradas Bot",
+    "version": "1.0",
+    "description": "Entradas Bot Configuration",
+    "content_scripts": [
+      {
+        "matches": ["*://*.realmadrid.entradas.com/*"],
+        "js": ["src/content_scripts/content.js"]
+      }
+    ],
+    "action": {
+    "permissions": [
+    "activeTab",
+    "webRequest",
+    "webRequestBlocking",
+    "declarativeNetRequest",
+    "scripting"
+  ],
+      "default_popup": "src/popup/popup.html"
+    },
+    "host_permissions": [
+    "*://*/*"
+  ]
+  }
