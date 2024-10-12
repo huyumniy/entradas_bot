@@ -18,3 +18,6 @@ temp
 /test.py
 /.env
 slack-post
+/slack-post
+slack-post/*
+/slack-post/*
