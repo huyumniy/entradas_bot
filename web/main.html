@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entradas bot</title>
+    <link rel="icon" type="image/x-icon" href="ico1.ico?v=2"  />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.3.0/font/bootstrap-icons.css" />
+    <link rel="stylesheet" href="style.css">
+    <script src="eel.js"></script>
+    <style>
+        /* Initially hide Adspower input and API fields */
+        .adspower-input, .adspower-api {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="main">
+        <div class="inputs">
+            <h3>Initial Url</h3>
+            <input type="text" id="initialUrl" name="initialUrl" placeholder="https://example.com">
+        </div>
+        <div class="inputs">
+            <h3>Browsers amount</h3>
+            <input type="number" id="browserAmount" name="browserAmount" placeholder="1-9999">
+        </div>
+        <!-- <div class="inputs">
+            <h3>Adspower API</h3>
+            <input type="text" id="adspowerAPI" name="adspowerAPI" placeholder="http://local.adspower.net:50325">
+        </div> -->
+        <div class="radio">
+            <form>
+                <h3 for="isSlack">Slack Push: </h3>
+                <label for="isNotSlack">No</label>
+                <input type="radio" id="isNotSlack" name="isSlack" checked>
+                <label for="isSlack">Yes</label>
+                <input type="radio" id="isSlack" name="isSlack">
+            </form>
+        </div>
+        <div class="radio">
+            <form>
+                <h3 for="isVpn">Use VPN: </h3>
+                <label for="isNotVpn">No</label>
+                <input type="radio" id="isNotVpn" name="isVpn" checked>
+                <label for="isVpn">Yes</label>
+                <input type="radio" id="isVpn" name="isVpn">
+            </form>
+        </div>
+        <!-- <div class="radio">
+            <form>
+                <h3 for="isAdspower">Use Adspower: </h3>
+                <label for="isNotAdspower">No</label>
+                <input type="radio" id="isNotAdspower" name="isAdspower" checked>
+                <label for="isAdspower">Yes</label>
+                <input type="radio" id="isAdspower" name="isAdspower">
+            </form>
+        </div> -->
+        <div class="inputs proxy-input">
+            <h3>Proxy input:</h3>
+            <textarea name="proxyInput" class="textareaNormal" placeholder="ip:port:login:password&#10;ip:port:login:password&#10;ip:port:login:password&#10;"></textarea>
+        </div>
+
+        <div class="inputs adspower-input">
+            <h3>Adspower input:</h3>
+            <textarea name="adspowerInput" class="textareaNormal" placeholder="9453&#10;9454&#10;9455"></textarea>
+        </div>
+        <div class="buttons">
+            <div class="start">
+              <button id="run" class="active">Start</button>
+          </div>
+        </div>
+    </div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script type="text/javascript">
+        // $(document).ready(function() {
+        //     // Check the radio buttons for "Use Adspower"
+        //     $('input[name="isAdspower"]').on('change', function() {
+        //         if ($('#isAdspower').is(':checked')) {
+        //             // Hide proxy input and show Adspower-related inputs
+        //             $('textarea[name="proxyInput"]').val('');
+        //             $('.proxy-input').hide();
+        //             $('.adspower-input').show();
+        //             $('.adspower-api').show();
+        //         } else {
+        //             // Show proxy input and hide Adspower-related inputs
+        //             $('textarea[name="adspowerInput"]').val('');
+        //             $('.proxy-input').show();
+        //             $('.adspower-input').hide();
+        //             $('.adspower-api').hide();
+        //         }
+        //     });
+        // });
+
+        async function start(button) {
+            if (button.getAttribute("class") == "active") {
+                button.innerHTML = '';
+                button.style.color = "#0F2027";
+                const initialUrl = document.querySelector('#initialUrl').value;
+                // const adspowerApi = document.querySelector('#adspowerAPI').value;
+                const slackPushRadio = document.querySelector('input[name="isSlack"]:checked');
+                const slackPush = slackPushRadio ? slackPushRadio.id === 'isSlack' : false;
+                const VpnRadio = document.querySelector('input[name="isVpn"]:checked');
+                const isVpn = VpnRadio ? VpnRadio.id === 'isVpn' : false;
+                const browsersAmount = document.querySelector('#browserAmount').value
+                // Check the Adspower radio buttons
+                // const adspowerRadio = document.querySelector('input[name="isAdspower"]:checked');
+                // const useAdspower = adspowerRadio ? adspowerRadio.id === 'isAdspower' : false;
+
+                // let adspowerList = []
+                let proxyList = []
+                // useAdspower ? adspowerList = document.querySelector('textarea[name="adspowerInput"]').value 
+                // : proxyList = document.querySelector('textarea[name="proxyInput"]').value
+                proxyList = document.querySelector('textarea[name="proxyInput"]').value
+                // console.log(initialUrl, slackPush, useAdspower, 0, adspowerApi, adspowerList, proxyList)
+                closeWindow()
+                // document.querySelector('#restart').setAttribute("class", "active-restart");
+                await eel.main(initialUrl, slackPush, browsersAmount, isVpn, proxyList)();
+            }
+        }
+
+
+        function closeWindow() {
+            let new_window =
+                open(location, '_self');
+            new_window.top.close();
+        }
+
+
+        function main() {
+            const button = document.querySelector('#run');
+            if (button.innerHTML == "Start") start(button);
+        }
+
+
+        jQuery('#run').on('click', function() {
+            main();
+        });
+    </script>
+</body>
+</html>

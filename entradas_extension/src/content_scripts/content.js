@@ -152,7 +152,7 @@ function createForm() {
   selectField.id = 'selection';
   selectField.name = 'selection';
 
-  [1, 2, 3, 4].forEach((optionValue) => {
+  [0, 1, 2, 3, 4].forEach((optionValue) => {
     const option = document.createElement('option');
     option.value = optionValue;
     option.textContent = optionValue;
