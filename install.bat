@@ -1,6 +1,6 @@
 @echo off
 
-set "project_dir=..\entradas"
+set "project_dir=..\entradas_bot-main"
 set "venv_dir=%project_dir%"
 
 rem Create virtual environment
