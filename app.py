@@ -358,23 +358,28 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
         driver.get(vpn_url)
         # proxies = parse_data_from_file('proxies.txt')
         delete_tab = driver.find_element(By.XPATH, '//*[@id="deleteOptions"]')
+        driver.execute_script("arguments[0].scrollIntoView();", delete_tab)
         delete_tab.click()
         time.sleep(1)
         driver.find_element(By.XPATH, '//*[@id="privacy"]/div[1]/input').click()
         driver.find_element(By.XPATH, '//*[@id="privacy"]/div[2]/input').click()
         driver.find_element(By.XPATH, '//*[@id="privacy"]/div[4]/input').click()
         driver.find_element(By.XPATH, '//*[@id="privacy"]/div[7]/input').click()
-        driver.find_element(By.XPATH, '//*[@id="optionsOK"]').click()
+        optionsOK = driver.find_element(By.XPATH, '//*[@id="optionsOK"]')
+        driver.execute_script("arguments[0].scrollIntoView();", optionsOK)
+        optionsOK.click()
         time.sleep(1)
         edit = driver.find_element(By.XPATH, '//*[@id="editProxyList"]/small/b')
+        driver.execute_script("arguments[0].scrollIntoView();", edit)
         edit.click()
         time.sleep(1)
         text_area = driver.find_element(By.XPATH, '//*[@id="proxiesTextArea"]')
         text_area.send_keys(proxyList)
         time.sleep(1)
         ok_button = driver.find_element(By.XPATH, '//*[@id="addProxyOK"]')
+        driver.execute_script("arguments[0].scrollIntoView();", ok_button)
         ok_button.click()
-        time.sleep(1)
+        time.sleep(3)
         if not isVpn:
             proxy_switch_list = driver.find_elements(By.CSS_SELECTOR, '#proxySelectDiv > div > div > ul > li')
             if len(proxy_switch_list) == 3: proxy_switch_list[2].click()
@@ -382,7 +387,9 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
             time.sleep(5)
         if isVpn:
             check_for_element(driver, '#proxySelectDiv', click=True)
+            time.sleep(2)
         proxy_auto_reload_checkbox = driver.find_element(By.XPATH, '//*[@id="autoReload"]')
+        driver.execute_script("arguments[0].scrollIntoView();", proxy_auto_reload_checkbox)
         proxy_auto_reload_checkbox.click()
         time.sleep(2)
     if isVpn:
@@ -540,10 +547,6 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                         pass
                     
                     try:
-                        dpdwn = check_for_element(driver, '//*[@class="active"][@id="seleccion-entradas"]', xpath=True)
-                    except:
-                        pass
-                    try:
                         ensure_check_elem(driver, '#alert-ok', tmt=5, methode=By.CSS_SELECTOR, click=True)
                     except:
                         pass
@@ -603,43 +606,34 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                         pass
                     break
                 if match_data == False: continue
+                sectors = None
                 try:
-                    driver.find_element(By.XPATH, '//*[@class="active"][@id="seleccion-entradas"]')
-                    continue
-                except:
-                    pass
-                try:
-                    ensure_check_elem(driver, '//*[@id="sectors-list"]/li',tmt=2)
-                except:
-                    print('No Valid Sectors')
-                    continue
-                while True:
-                    try:
-                        try:
-                            driver.find_element(
-                                By.XPATH, '//*[@id="onetrust-accept-btn-handler"]').click()
-                            driver.execute_script("document.querySelector('div.onetrust-pc-dark-filter.ot-fade-in').remove()")
-                        except:
-                            pass
-                        sectors = driver.find_elements(
-                            By.XPATH, '//*[@id="sectors-list"]/li')
-                        if ar == 'f':
-                            choice(sectors[:2]).click()
-                        elif ar == 'l':
-                            choice(sectors[2:]).click()
-                        else:
-                            choice(sectors).click()
-                        break
-                    except:
-                        time.sleep(.5)
                     try:
                         driver.find_element(
                             By.XPATH, '//*[@id="onetrust-accept-btn-handler"]').click()
                         driver.execute_script("document.querySelector('div.onetrust-pc-dark-filter.ot-fade-in').remove()")
                     except:
                         pass
+                    if 'l' == ar.lower(): sectors = check_for_elements(driver, "g[data-name^='Lateral'][class='sector']")
+                    elif 'f' == ar.lower(): sectors = check_for_elements(driver, "g[data-name^='Fondo'][class='sector']")
+                    else: sectors = check_for_elements(driver, "g[data-name][class='sector']")
+                    if type(sectors) == None: continue
+                    if len(sectors) < 1: continue
+                    random_sector = random.choice(sectors)
+                    random_sector.click()
+                except Exception as e:
+                    print(e)
+                    time.sleep(.5)
+                    continue
+                try:
+                    driver.find_element(
+                        By.XPATH, '//*[@id="onetrust-accept-btn-handler"]').click()
+                    driver.execute_script("document.querySelector('div.onetrust-pc-dark-filter.ot-fade-in').remove()")
+                except:
+                    pass
                 
                 bnms = []
+
                 for b in driver.find_elements(By.XPATH, '//*[@id="regular-price-list"]/li | //*[@id="vip-price-list"]/li'):
                     dp = b.get_attribute('data-price')
                     dpd = b.get_attribute('data-price-desc')
@@ -651,15 +645,17 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                         pass
                 vsel = '|'.join([f'//*[@data-price-desc="{bnm}"]/tspan' for bnm in bnms])
                 try:
-                    ensure_check_elem(driver, '//*[@class="newZoneClick"]',tmt=4)
+                    ensure_check_elem(driver, 'text > tspan[class="newZoneClick"]', methode=By.CSS_SELECTOR, tmt=4)
                 except:
                     print('No tickets')
                     continue
-                while True:
-
+                no_zones = True
+                while no_zones:
+                    active_zones = driver.find_elements(
+                            By.CSS_SELECTOR, 'text > tspan[class="newZoneClick"]')
+                    if len(active_zones) < 1: no_zones = False
                     try:
-                        zns = choice(driver.find_elements(
-                            By.XPATH, '//*[@class="newZoneClick"]')).click()
+                        zns = choice(active_zones).click()
                         break
                     except:
                         time.sleep(.6)
@@ -669,6 +665,7 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                         driver.execute_script("document.querySelector('div.onetrust-pc-dark-filter.ot-fade-in').remove()")
                     except:
                         pass
+                if not no_zones: continue
                 tk_niet = True
 
                 max_attempts = 5
@@ -722,8 +719,7 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                         ensure_check_elem(driver, 
                             '//*[@id="onetrust-accept-btn-handler"]', tmt=20, click=True)
                         driver.execute_script("document.querySelector('div.onetrust-pc-dark-filter.ot-fade-in').remove()")
-                    except Exception as e:
-                        print(e)
+                    except: pass
                     try:
                         u = driver.find_element(
                             By.XPATH, '//*[@class="nominative-row-title"]')
@@ -789,7 +785,8 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                 error_message = f'{formatted_datetime} - An error occurred: {str(e)}'
                 with open('error_log.txt', 'a') as file:
                     file.write(error_message + '\n')
-            except: pass
+                time.sleep(60)
+            except: time.sleep(60)
 
 
 def is_port_open(host, port):

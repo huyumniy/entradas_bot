@@ -233,9 +233,8 @@ function updateSettings() {
   console.log('Updated settings:', settings);
   localStorage.setItem('ticketBotSettings', JSON.stringify(settings));
   localStorage.removeItem('stopExecution')
-  setTimeout(() => {
-    window.location.reload();
-  }, 1000);
+  let return_button = document.querySelector('#buttonsPaymentData > a')
+  if (return_button) return_button.click()
 }
 
 window.onload = () => {
