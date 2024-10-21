@@ -9,7 +9,7 @@ import requests
 app = Flask(__name__)
 to_run = True
 # Set up Slack API client
-slack_token = "xoxb-773919780944-7859863278310-g6BjJyZdol0B52IbHcVG7Que"
+slack_token = "xoxb-773919780944-7859863278310-pA9hctzX26oSsnA6HjzkrIEb"
 client = WebClient(token=slack_token)
 
 
