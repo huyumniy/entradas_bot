@@ -232,7 +232,7 @@ def check_server_running(port='8080'):
 
 def start_server():
     """Start the Flask server in a subprocess."""
-    subprocess.Popen([sys.executable, './slack-post/server.py'])
+    subprocess.Popen([sys.executable, '/server.py'])
 
 
 def run_flask():
