@@ -13,9 +13,7 @@ import socket
 import eel
 import soundfile as sf
 import sounddevice as sd
-from dotenv import load_dotenv
 import random
-import asyncio
 import shutil
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
