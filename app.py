@@ -18,12 +18,9 @@ import asyncio
 import shutil
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
-# from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import NoSuchElementException
 import json
 from random import choice
 # from webdriver_manager.core.logger import __logger as wdm_logger
