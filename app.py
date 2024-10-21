@@ -20,6 +20,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
 # from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException
 import json
@@ -308,25 +310,49 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
     options.add_argument("--disable-site-isolation-trials")
     options.add_argument('--ignore-certificate-errors')
     options.add_argument('--lang=EN')
-    nopecha_path = os.getcwd() + '/NopeCHA'
-    entradas_ext_path = os.getcwd() + '/entradas_extension'
-    extension_path = os.getcwd() + '/BP-Proxy-Switcher-Chrome'
+
+    # Set the paths for extensions
+    nopecha_path = os.path.join(os.getcwd(), 'NopeCHA')
+    entradas_ext_path = os.path.join(os.getcwd(), 'entradas_extension')
+    extension_path = os.path.join(os.getcwd(), 'BP-Proxy-Switcher-Chrome')
     command = f"--load-extension={extension_path},{nopecha_path},{entradas_ext_path}"
-    
+
+    # Add VPN extension if needed
     if isVpn:
-        if os.name == 'posix' and platform.system() == 'Darwin': vpn_extension_path = os.getcwd() + "/vpn"
-        elif os.name == 'nt': vpn_extension_path = os.getcwd() + "\\vpn"
+        if os.name == 'posix' and platform.system() == 'Darwin':
+            vpn_extension_path = os.path.join(os.getcwd(), 'vpn')
+        elif os.name == 'nt':
+            vpn_extension_path = os.path.join(os.getcwd(), 'vpn')
         command += f',{vpn_extension_path}'
-    
+
+    # Add the extensions command
     options.add_argument(command)
-    
-    prefs = {"credentials_enable_service": False,
-        "profile.password_manager_enabled": False}
+
+    # Disable password manager popups
+    prefs = {
+        "credentials_enable_service": False,
+        "profile.password_manager_enabled": False
+    }
     options.add_experimental_option("prefs", prefs)
-    driver = webdriver.Chrome(
-        options=options,
-        enable_cdp_events=True
-    )
+
+    # Specify the path to chromedriver in the current working directory
+    chromedriver_path = os.path.join(os.getcwd(), 'chromedriver.exe')
+    
+    # Create a Service object using the chromedriver path
+    service = Service(executable_path=chromedriver_path)
+    if os.getlogin() in ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10', 'S11', 'S12', 'S13', 'S14', 'S15',
+    'S3U1', 'S3U2', 'S3U3', 'S3U4', 'S3U5', 'S3U6', 'S3U7', 'S3U8', 'S3U9', 'S3U10', 'S3U11', 'S3U12', 'S3U13', 'S3U14', 'S3U15', 'S3U16',
+    'Admin3']:
+        driver = webdriver.Chrome(
+            version_main=129,
+            options=options,
+            enable_cdp_events=True
+        )
+    else:
+        driver = webdriver.Chrome(
+            options=options,
+            enable_cdp_events=True
+        )
     time.sleep(5)
     try:
         tabs = driver.window_handles
