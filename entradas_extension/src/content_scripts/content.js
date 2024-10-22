@@ -267,7 +267,7 @@ window.onload = () => {
     transaction.oncomplete = function () {
       console.log("Settings updated in IndexedDB.");
       const backToMap = document.querySelector('a[id="backToMap1"]')
-      backToMap.click()
+      if (backToMap) backToMap.click()
     };
 
     transaction.onerror = function () {
