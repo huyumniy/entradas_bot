@@ -10,10 +10,12 @@ import subprocess
 import requests
 import threading
 import socket
+from selenium.common.exceptions import NoAlertPresentException, TimeoutException
 import eel
 import soundfile as sf
 import sounddevice as sd
 import random
+import asyncio
 import shutil
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
@@ -298,6 +300,39 @@ def main(initialUrl, isSlack, browsersAmount, isVpn, proxyList):
     # Wait for all threads to complete
     for thread in threads:
         thread.join()
+
+
+def get_indexeddb_data(driver, db_name, store_name):
+    script = f"""
+    var callback = arguments[arguments.length - 1];  // Last argument is the callback for async script
+
+    var openRequest = indexedDB.open("{db_name}");
+
+    openRequest.onsuccess = function(event) {{
+        var db = event.target.result;
+        var transaction = db.transaction("{store_name}", "readonly");
+        var store = transaction.objectStore("{store_name}");
+        var getRequest = store.get(1);  // Assuming the data is stored under key 1, adjust if needed
+
+        getRequest.onsuccess = function(event) {{
+            var result = getRequest.result;
+            if (result) {{
+                callback(JSON.stringify(result.settings));  // Pass the result back to Python
+            }} else {{
+                callback(null);  // No result found
+            }}
+        }};
+
+        getRequest.onerror = function(event) {{
+            callback(null);  // Error in getting the data
+        }};
+    }};
+
+    openRequest.onerror = function(event) {{
+        callback(null);  // Error in opening the database
+    }};
+    """
+    return driver.execute_async_script(script)
     
 
 def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[]):
@@ -499,9 +534,19 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
 
                         # If the element is found
                         if result['found']:
-                            ticketBotSettings = get_local_data(driver)  # Get local data for the tab
+                            # Try fetching data from IndexedDB first
+                            try:
+                                ticketBotSettings = get_indexeddb_data(driver, 'TicketBotDB', 'settings')  # Replace with actual DB name and store
+                            except Exception as e:
+                                print(f"Error fetching data from IndexedDB: {e}")
+                                ticketBotSettings = None
+
+                            # Fallback to localStorage if IndexedDB data is not found
+                            if not ticketBotSettings:
+                                ticketBotSettings = get_local_data(driver)  # Get local data for the tab
+                                ticketBotSettings = json.loads(ticketBotSettings) if ticketBotSettings else None
+
                             if ticketBotSettings:
-                                ticketBotSettings = json.loads(ticketBotSettings)
                                 print(f"Element found in tab {index + 1}: {result['text']}, {ticketBotSettings}")
                                 no_stadium = False
                                 break  # Exit the loop if the element is found
@@ -523,9 +568,14 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                         driver.switch_to.window(driver.window_handles[0])
                     except:
                         pass
-            
+
             while True:
-                ticketBotSettings = json.loads(get_local_data(driver))
+                # Fetch data from IndexedDB or localStorage
+                try:
+                    ticketBotSettings = json.loads(get_indexeddb_data(driver, 'TicketBotDB', 'settings'))
+                except:
+                    ticketBotSettings = json.loads(get_local_data(driver))
+
                 madridista = bool(ticketBotSettings['isMadridista'])
                 ent = int(ticketBotSettings['amount'])
                 maxprc = int(ticketBotSettings['maxPrice'])
@@ -534,15 +584,17 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                 numero_mad = None
                 con_mad = None
                 acom = None
-                result = driver.execute_script("return window.localStorage.getItem('stopExecution');")
+                result = driver.execute_script("return window.stopExecutionFlag;")
 
                 if result:
                     time.sleep(5)
                     continue
+
                 if ticketBotSettings['madridista']:
                     numero_mad = ticketBotSettings['madridista'].get('login')
                     con_mad = ticketBotSettings['madridista'].get('password')
                     acom = str(ticketBotSettings['selection'])
+
                 print(madridista, ent, maxprc, minprc, ar, numero_mad, con_mad, acom)
                 
                 # driver.delete_all_cookies()
@@ -751,7 +803,7 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                         sd.play(data_play, fs)
                         status = sd.wait()
                         seats = None
-                        driver.execute_script("window.localStorage.setItem('stopExecution', 'true');")
+                        driver.execute_script("window.stopExecutionFlag = true;")
                         if isSlack:
                             match = check_for_element(driver, 'div[class="event-name"]')
                             quantity = check_for_element(driver, 'label[id="numero-entradas"]')
@@ -786,16 +838,26 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                             post_request(data)
                         restart = True
                         while restart:
-                            result = driver.execute_script("return window.localStorage.getItem('stopExecution');")
-                            if not json.loads(result):
-                                driver.back()
-                                try:
+                            try:
+                                alert = WebDriverWait(driver, 1).until(EC.alert_is_present())
+                                # You can decide to do nothing here, leaving the alert open
+                            except NoAlertPresentException:
+                                pass  # No alert to handle, continue the loop
+                            try:
+                                result = driver.execute_script("return window.stopExecutionFlag;")
+                                if result:
+                                    result = bool(result)
+                                if not result:
+                                    driver.back()
                                     WebDriverWait(driver, 5).until(
                                         lambda driver: driver.execute_script("return document.readyState") == "complete"
                                     )
-                                except:pass
-                                driver.refresh()
-                                restart = False
+                                    driver.refresh()
+                                    restart = False
+                            except (NoAlertPresentException, TimeoutException):
+                                # No alert or timeout occurred; continue the loop
+                                pass
+                            except:pass
                             time.sleep(5)
                         break
                     except Exception as e:
