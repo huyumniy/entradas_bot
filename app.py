@@ -15,6 +15,7 @@ import eel
 import soundfile as sf
 import sounddevice as sd
 import random
+from random import choice
 import asyncio
 import shutil
 from selenium.webdriver.common.by import By
@@ -23,7 +24,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support import expected_conditions as EC
 import json
-from random import choice
 # from webdriver_manager.core.logger import __logger as wdm_logger
 init(autoreset=True)
 entrada = "https://www.entradas.com/artist/real-madrid-c-f/"
