@@ -1,27 +1,32 @@
 import undetected_chromedriver as webdriver
 import time
-import os, sys
+import os, sys, platform
 import datetime
 import tempfile
+from flask import Flask, request, Response 
+from slack_sdk import WebClient
+from colorama import init, Fore
+import subprocess
 import requests
+from fake_useragent import UserAgent
+import threading
+import socket
+from selenium.common.exceptions import NoAlertPresentException, TimeoutException
+import eel
 import soundfile as sf
 import sounddevice as sd
 import random
+from random import choice
 import asyncio
 import shutil
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select
-from selenium.webdriver.chrome.service import Service
-from pyshadow.main import Shadow
-# from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import NoSuchElementException
 import json
-from random import choice
-import logging
 # from webdriver_manager.core.logger import __logger as wdm_logger
-
+init(autoreset=True)
 entrada = "https://www.entradas.com/artist/real-madrid-c-f/"
 
 class ProxyExtension:
@@ -182,7 +187,14 @@ def get_local_data(driver):
     return ticketBotSettings
 
 
-def post_request(data, endpoint='/book', port='80'):
+def post_request(data, endpoint='/book', port='8080'):
+
+    if not check_server_running(port):
+        print("Server is not running, starting the server...")
+        start_server()
+        time.sleep(5)  # Give the server some time to start up
+    print(data)
+
     try:
         json_data = json.dumps(data)
         
@@ -210,75 +222,247 @@ def post_request(data, endpoint='/book', port='80'):
     else: return False
 
 
-def main():
-    options = webdriver.ChromeOptions()
-    options.add_argument("--log-level=3")
-    options.add_argument('--disable-infobars')
-    options.add_argument('--disable-features=TranslateUI')
-    options.add_argument('--disable-translate')
-    options.add_argument('--ignore-certificate-errors')
-    options.add_argument('--lang=EN')
-    nopecha_path = os.getcwd() + '/NopeCHA'
-    extension_path = os.getcwd() + '/BP-Proxy-Switcher-Chrome'
-    entradas_ext_path = os.getcwd() + '/entradas_extension'
-    options.add_argument(f"--load-extension={extension_path},{nopecha_path},{entradas_ext_path}")
-    prefs = {"credentials_enable_service": False,
-        "profile.password_manager_enabled": False}
-    options.add_experimental_option("prefs", prefs)
-    driver = webdriver.Chrome(
-        options=options,
-        enable_cdp_events=True
-    )
-
-    driver.get('https://nopecha.com/setup#zzfqud0q4yw58yyb|keys=|enabled=true|disabled_hosts=|hcaptcha_auto_open=true|hcaptcha_auto_solve=true|hcaptcha_solve_delay=true|hcaptcha_solve_delay_time=3000|recaptcha_auto_open=true|recaptcha_auto_solve=true|recaptcha_solve_delay=false|recaptcha_solve_delay_time=2000|funcaptcha_auto_open=true|funcaptcha_auto_solve=true|funcaptcha_solve_delay=true|funcaptcha_solve_delay_time=1000|awscaptcha_auto_open=false|awscaptcha_auto_solve=false|awscaptcha_solve_delay=true|awscaptcha_solve_delay_time=1000|turnstile_auto_solve=true|turnstile_solve_delay=true|turnstile_solve_delay_time=1000|perimeterx_auto_solve=false|perimeterx_solve_delay=true|perimeterx_solve_delay_time=1000|textcaptcha_auto_solve=false|textcaptcha_solve_delay=true|textcaptcha_solve_delay_time=100|textcaptcha_image_selector=|textcaptcha_input_selector=')
+def check_server_running(port='8080'):
+    """Check if the server is running by making a request to it."""
+    try:
+        response = requests.get(f"http://localhost:{port}")
+        return response.status_code == 200
+    except requests.exceptions.RequestException:
+        return False
 
 
-    driver.get('chrome://extensions/')
-    time.sleep(1)
+def start_server():
+    """Start the Flask server in a subprocess."""
+    subprocess.Popen([sys.executable, './server.py'])
 
-    # Example script to retrieve extensions
-    script_array = """
+
+def run_flask():
+    app = Flask(__name__)
+    to_run = True
+    # Set up Slack API client
+    slack_token = None
+    with open('slack_token.txt', 'r') as file:
+        slack_token = file.read().strip()
+    client = WebClient(token=slack_token)
+    app.run(debug=True, port=8080)
+
+
+def connect_vpn(driver):
+    blacklist = ['Iran', 'Egypt', 'Italy']
+    while True:
+        try:
+            driver.get('chrome://extensions/')
+            js_code = """
                 const callback = arguments[0];
                 chrome.management.getAll((extensions) => {
                     callback(extensions);
                 });
             """
+            extensions = driver.execute_async_script(js_code)
+            filtered_extensions = [extension for extension in extensions if 'Urban VPN' in extension['description']]
+            
+            vpn_id = [extension['id'] for extension in filtered_extensions if 'id' in extension][0]
+            vpn_url = f'chrome-extension://{vpn_id}/popup/index.html'
+            driver.get(vpn_url)
+            wait_for_element(driver, 'button[class="button button--pink consent-text-controls__action"]', timeout=5)
+            check_for_element(driver, '#app > div > div.simple-layout > div.simple-layout__body > div > div > button', click=True)
+            check_for_element(driver, 'button[class="button button--pink consent-text-controls__action"]', click=True)
+            is_connected = check_for_element(driver, 'div[class="play-button play-button--pause"]')
+            if is_connected: 
+                driver.find_element(By.CSS_SELECTOR, 'div[class="play-button play-button--pause"]').click()
+            select_element = driver.find_element(By.CSS_SELECTOR, 'div[class="select-location"]')
+            select_element.click()
+            time.sleep(2)
+            while True:
+                element = random.choice(check_for_elements(driver, '//ul[@class="locations"][2]/li/p', xpath=True))
+                element_text = element.text
+                if element_text not in blacklist: break
+            driver.execute_script("arguments[0].scrollIntoView();", element)
+            element.click()
+            time.sleep(5)
+            break
+        except: pass
+    return True
 
-    # Execute the JavaScript and get the result
-    extensions = driver.execute_async_script(script_array)
-    filtered_extensions = [extension for extension in extensions if "BP Proxy Switcher" in extension['name']]
+@eel.expose
+def main(initialUrl, isSlack, browsersAmount, isVpn, proxyList):
+    print(initialUrl, isSlack, browsersAmount, isVpn, proxyList)
+    # eel.spawn(run(initialUrl, isSlack, browserAmount, proxyList))
+    threads = []
+    if isSlack:
+        flask_thread = threading.Thread(target=run_flask)
+        flask_thread.daemon = True
+        flask_thread.start()
+    for i in range(1, int(browsersAmount)+1):  # Example: 3 threads, modify as needed
+        if i!= 1: time.sleep(i*30)
+        thread = threading.Thread(target=run, args=(i, initialUrl, isSlack, browsersAmount, isVpn, proxyList))
+        threads.append(thread)
+        thread.start()
+    # Wait for all threads to complete
+    for thread in threads:
+        thread.join()
 
-    vpn_id = [extension['id'] for extension in filtered_extensions if 'id' in extension][0]
-    vpn_url = f'chrome-extension://{vpn_id}/popup.html'
-    driver.get(vpn_url)
-    proxies = parse_data_from_file('proxies.txt')
-    delete_tab = driver.find_element(By.XPATH, '//*[@id="deleteOptions"]')
-    delete_tab.click()
-    time.sleep(1)
-    driver.find_element(By.XPATH, '//*[@id="privacy"]/div[1]/input').click()
-    driver.find_element(By.XPATH, '//*[@id="privacy"]/div[2]/input').click()
-    driver.find_element(By.XPATH, '//*[@id="privacy"]/div[4]/input').click()
-    driver.find_element(By.XPATH, '//*[@id="privacy"]/div[7]/input').click()
-    driver.find_element(By.XPATH, '//*[@id="optionsOK"]').click()
-    time.sleep(1)
-    edit = driver.find_element(By.XPATH, '//*[@id="editProxyList"]/small/b')
-    edit.click()
-    time.sleep(1)
-    text_area = driver.find_element(By.XPATH, '//*[@id="proxiesTextArea"]')
-    text_area.send_keys(proxies)
-    time.sleep(1)
-    ok_button = driver.find_element(By.XPATH, '//*[@id="addProxyOK"]')
-    ok_button.click()
-    time.sleep(1)
-    proxy_switch_list = driver.find_elements(By.CSS_SELECTOR, '#proxySelectDiv > div > div > ul > li')
-    print(len(proxy_switch_list))
-    if len(proxy_switch_list) == 3: proxy_switch_list[2].click()
-    else: proxy_switch_list[random.randint(3, len(proxy_switch_list))-1].click()
+
+def get_indexeddb_data(driver, db_name, store_name):
+    script = f"""
+    var callback = arguments[arguments.length - 1];  // Last argument is the callback for async script
+
+    var openRequest = indexedDB.open("{db_name}");
+
+    openRequest.onsuccess = function(event) {{
+        var db = event.target.result;
+        var transaction = db.transaction("{store_name}", "readonly");
+        var store = transaction.objectStore("{store_name}");
+        var getRequest = store.get(1);  // Assuming the data is stored under key 1, adjust if needed
+
+        getRequest.onsuccess = function(event) {{
+            var result = getRequest.result;
+            if (result) {{
+                callback(JSON.stringify(result.settings));  // Pass the result back to Python
+            }} else {{
+                callback(null);  // No result found
+            }}
+        }};
+
+        getRequest.onerror = function(event) {{
+            callback(null);  // Error in getting the data
+        }};
+    }};
+
+    openRequest.onerror = function(event) {{
+        callback(null);  // Error in opening the database
+    }};
+    """
+    return driver.execute_async_script(script)
+    
+
+def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[]):
+    ua = UserAgent(platforms='mobile')
+    random_ua = ua.random
+    while 'iPhone' not in str(random_ua):
+        random_ua = ua.random
+        print(random_ua)
+    options = webdriver.ChromeOptions()
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_argument("--log-level=3")
+    
+    options.add_argument(f'--user-agent={str(random_ua)}')
+    options.add_argument("--disable-web-security")
+    options.add_argument("--disable-site-isolation-trials")
+    options.add_argument('--ignore-certificate-errors')
+    options.add_argument('--lang=EN')
+
+    # Set the paths for extensions
+    nopecha_path = os.path.join(os.getcwd(), 'NopeCHA')
+    entradas_ext_path = os.path.join(os.getcwd(), 'entradas_extension')
+    extension_path = os.path.join(os.getcwd(), 'BP-Proxy-Switcher-Chrome')
+    command = f"--load-extension={extension_path},{nopecha_path},{entradas_ext_path}"
+
+    # Add VPN extension if needed
+    if isVpn:
+        if os.name == 'posix' and platform.system() == 'Darwin':
+            vpn_extension_path = os.path.join(os.getcwd(), 'vpn')
+        elif os.name == 'nt':
+            vpn_extension_path = os.path.join(os.getcwd(), 'vpn')
+        command += f',{vpn_extension_path}'
+
+    # Add the extensions command
+    options.add_argument(command)
+
+    # Disable password manager popups
+    prefs = {
+        "credentials_enable_service": False,
+        "profile.password_manager_enabled": False
+    }
+    options.add_experimental_option("prefs", prefs)
+
+    # Specify the path to chromedriver in the current working directory
+    chromedriver_path = os.path.join(os.getcwd(), 'chromedriver.exe')
+    
+    # Create a Service object using the chromedriver path
+    service = Service(executable_path=chromedriver_path)
+    if os.getlogin() in ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10', 'S11', 'S12', 'S13', 'S14', 'S15',
+    'S3U1', 'S3U2', 'S3U3', 'S3U4', 'S3U5', 'S3U6', 'S3U7', 'S3U8', 'S3U9', 'S3U10', 'S3U11', 'S3U12', 'S3U13', 'S3U14', 'S3U15', 'S3U16',
+    'Admin3']:
+        driver = webdriver.Chrome(
+            version_main=129,
+            options=options,
+            enable_cdp_events=True
+        )
+    else:
+        driver = webdriver.Chrome(
+            options=options,
+            enable_cdp_events=True
+        )
     time.sleep(5)
-    proxy_auto_reload_checkbox = driver.find_element(By.XPATH, '//*[@id="autoReload"]')
-    proxy_auto_reload_checkbox.click()
-    time.sleep(2)
+    try:
+        tabs = driver.window_handles
+        driver.switch_to.window(tabs[1])
+        driver.close()
+        driver.switch_to.window(tabs[0])
+    except Exception as e:
+        print(f"Error handling tabs: {e}")
 
+    driver.get('https://nopecha.com/setup#awscaptcha_auto_open=true|awscaptcha_auto_solve=false|awscaptcha_solve_delay=true|awscaptcha_solve_delay_time=0|disabled_hosts=|enabled=true|funcaptcha_auto_open=true|funcaptcha_auto_solve=false|funcaptcha_solve_delay=true|funcaptcha_solve_delay_time=0|geetest_auto_open=false|geetest_auto_solve=false|geetest_solve_delay=true|geetest_solve_delay_time=1000|hcaptcha_auto_open=true|hcaptcha_auto_solve=false|hcaptcha_solve_delay=true|hcaptcha_solve_delay_time=3000|sub_1QD8apCRwBwvt6pthLg8WQKk|keys=|lemincaptcha_auto_open=false|lemincaptcha_auto_solve=false|lemincaptcha_solve_delay=true|lemincaptcha_solve_delay_time=1000|perimeterx_auto_solve=false|perimeterx_solve_delay=true|perimeterx_solve_delay_time=1000|recaptcha_auto_open=true|recaptcha_auto_solve=true|recaptcha_solve_delay=true|recaptcha_solve_delay_time=1000|recaptcha_solve_method=Image|textcaptcha_auto_solve=false|textcaptcha_image_selector=.captcha-code|textcaptcha_input_selector=#solution|textcaptcha_solve_delay=true|textcaptcha_solve_delay_time=0|turnstile_auto_solve=false|turnstile_solve_delay=true|turnstile_solve_delay_time=30000')
+    if proxyList:
+        driver.get('chrome://extensions/')
+        time.sleep(1)
+
+        # Example script to retrieve extensions
+        script_array = """
+                    const callback = arguments[0];
+                    chrome.management.getAll((extensions) => {
+                        callback(extensions);
+                    });
+                """
+
+        # Execute the JavaScript and get the result
+        extensions = driver.execute_async_script(script_array)
+        filtered_extensions = [extension for extension in extensions if "BP Proxy Switcher" in extension['name']]
+
+        vpn_id = [extension['id'] for extension in filtered_extensions if 'id' in extension][0]
+        vpn_url = f'chrome-extension://{vpn_id}/popup.html'
+        driver.get(vpn_url)
+        # proxies = parse_data_from_file('proxies.txt')
+        delete_tab = driver.find_element(By.XPATH, '//*[@id="deleteOptions"]')
+        driver.execute_script("arguments[0].scrollIntoView();", delete_tab)
+        delete_tab.click()
+        time.sleep(1)
+        driver.find_element(By.XPATH, '//*[@id="privacy"]/div[1]/input').click()
+        driver.find_element(By.XPATH, '//*[@id="privacy"]/div[2]/input').click()
+        driver.find_element(By.XPATH, '//*[@id="privacy"]/div[4]/input').click()
+        driver.find_element(By.XPATH, '//*[@id="privacy"]/div[7]/input').click()
+        optionsOK = driver.find_element(By.XPATH, '//*[@id="optionsOK"]')
+        driver.execute_script("arguments[0].scrollIntoView();", optionsOK)
+        optionsOK.click()
+        time.sleep(1)
+        edit = driver.find_element(By.XPATH, '//*[@id="editProxyList"]/small/b')
+        driver.execute_script("arguments[0].scrollIntoView();", edit)
+        edit.click()
+        time.sleep(1)
+        text_area = driver.find_element(By.XPATH, '//*[@id="proxiesTextArea"]')
+        text_area.send_keys(proxyList)
+        time.sleep(1)
+        ok_button = driver.find_element(By.XPATH, '//*[@id="addProxyOK"]')
+        driver.execute_script("arguments[0].scrollIntoView();", ok_button)
+        ok_button.click()
+        time.sleep(3)
+        if not isVpn:
+            proxy_switch_list = driver.find_elements(By.CSS_SELECTOR, '#proxySelectDiv > div > div > ul > li')
+            if len(proxy_switch_list) == 3: proxy_switch_list[2].click()
+            else: proxy_switch_list[random.randint(3, len(proxy_switch_list))-1].click()
+            time.sleep(5)
+        if isVpn:
+            check_for_element(driver, '#proxySelectDiv', click=True)
+            time.sleep(2)
+        proxy_auto_reload_checkbox = driver.find_element(By.XPATH, '//*[@id="autoReload"]')
+        driver.execute_script("arguments[0].scrollIntoView();", proxy_auto_reload_checkbox)
+        proxy_auto_reload_checkbox.click()
+        time.sleep(2)
+    if isVpn:
+        connect_vpn(driver)
+    driver.get(initialUrl)
+    print(Fore.GREEN + f"Thread {thread_number}: Successfully started!\n")
     while True:
         try:
             # madridista = input(
@@ -330,27 +514,58 @@ def main():
 
             # driver.get(lnks[id1])
             # ensure_check_elem(driver,'//button[./span[contains(text(),"ar en")]]', click=True)
-            
             no_stadium = True
             ticketBotSettings = None
             while no_stadium:
-                for index in range(len(driver.window_handles)):
-                    driver.switch_to.window(driver.window_handles[index])  # Switch to the tab
+                window_handles = driver.window_handles  # Fetch current window handles
+                for index, handle in enumerate(window_handles):
                     try:
-                        
-                        element = check_for_element(driver, '//*[@id="num-entradas"]', xpath=True)  # Replace with the appropriate method
-                        
-                        ticketBotSettings = get_local_data(driver)
-                        if element and ticketBotSettings:
-                            ticketBotSettings = json.loads(ticketBotSettings)
-                            print(f"Element found in tab {index + 1} ({driver.current_url}): {element.text}, {ticketBotSettings}")
-                            no_stadium = False
-                    except NoSuchElementException:
-                        print(f"Element not found in tab {index + 1} ({driver.current_url})")
-                    except Exception as e: 
-                        print(e)
+                        # Use JavaScript to check if the document is still available in the specific window
+                        script = """
+                            try {
+                                var element = document.evaluate(arguments[0], document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+                                if (element) {
+                                    return { found: true, text: element.textContent };
+                                } else {
+                                    return { found: false };
+                                }
+                            } catch (e) {
+                                return { error: true };
+                            }
+                        """
+                        result = driver.execute_script(script, '//*[@id="num-entradas"]')  # Adjust the XPath
+
+                        # If there was an error in accessing the window/tab
+                        if 'error' in result and result['error']:
+                            print(f"Error accessing tab {index + 1} ({handle})")
+                            continue  # Skip to the next tab
+
+                        # If the element is found
+                        if result['found']:
+                            # Try fetching data from IndexedDB first
+                            try:
+                                ticketBotSettings = get_indexeddb_data(driver, 'TicketBotDB', 'settings')  # Replace with actual DB name and store
+                            except Exception as e:
+                                print(f"Error fetching data from IndexedDB: {e}")
+                                ticketBotSettings = None
+
+                            # Fallback to localStorage if IndexedDB data is not found
+                            if not ticketBotSettings:
+                                ticketBotSettings = get_local_data(driver)  # Get local data for the tab
+                                ticketBotSettings = json.loads(ticketBotSettings) if ticketBotSettings else None
+
+                            if ticketBotSettings:
+                                print(f"Element found in tab {index + 1}: {result['text']}, {ticketBotSettings}")
+                                no_stadium = False
+                                break  # Exit the loop if the element is found
+                        else:
+                            print(f"Element not found in tab {index + 1} ({handle})")
+                    except Exception as e:
+                        # Handle any unexpected exceptions (e.g., window closed during iteration)
+                        print(f"Unexpected error in tab {index + 1}: {str(e)}")
                 time.sleep(5)
             print('FOUND STADIUM')
+
             while True:
                 try:
                     r = driver.title
@@ -360,9 +575,14 @@ def main():
                         driver.switch_to.window(driver.window_handles[0])
                     except:
                         pass
-            
+
             while True:
-                ticketBotSettings = json.loads(get_local_data(driver))
+                # Fetch data from IndexedDB or localStorage
+                try:
+                    ticketBotSettings = json.loads(get_indexeddb_data(driver, 'TicketBotDB', 'settings'))
+                except:
+                    ticketBotSettings = json.loads(get_local_data(driver))
+
                 madridista = bool(ticketBotSettings['isMadridista'])
                 ent = int(ticketBotSettings['amount'])
                 maxprc = int(ticketBotSettings['maxPrice'])
@@ -371,19 +591,25 @@ def main():
                 numero_mad = None
                 con_mad = None
                 acom = None
-                result = driver.execute_script("return window.localStorage.getItem('stopExecution');")
+                result = driver.execute_script("return window.stopExecutionFlag;")
 
                 if result:
                     time.sleep(5)
                     continue
+
                 if ticketBotSettings['madridista']:
                     numero_mad = ticketBotSettings['madridista'].get('login')
                     con_mad = ticketBotSettings['madridista'].get('password')
                     acom = str(ticketBotSettings['selection'])
+
                 print(madridista, ent, maxprc, minprc, ar, numero_mad, con_mad, acom)
-                
+                # div[class="modal fullscreen"] #message-alert
                 # driver.delete_all_cookies()
-                driver.refresh()
+                try:
+                    driver.execute_script("document.querySelector('#message-alert').remove()")
+                    driver.execute_script("document.querySelector('div[class=\"modal fullscreen\"]').remove()")
+                except: pass
+                check_for_element(driver, 'h3[class="checked"]> a[class="seleccion-entradas-change change-step"]', click=True)
                 while 'laliga.queue-it.net' in driver.current_url: time.sleep(1)
                 try:
                     ensure_check_elem(driver, '//*[@class="active"][@id="seleccion-entradas"] | //*[@id="num-entradas"]')
@@ -401,16 +627,13 @@ def main():
                     #     break
                 match_data = True
                 while match_data:
+                    time.sleep(2)
                     try:
                         check_for_element(driver, '//*[@id="onetrust-accept-btn-handler"]', xpath=True, click=True)
                         driver.execute_script("document.querySelector('div.onetrust-pc-dark-filter.ot-fade-in').remove()")
                     except:
                         pass
                     
-                    try:
-                        dpdwn = check_for_element(driver, '//*[@class="active"][@id="seleccion-entradas"]', xpath=True)
-                    except:
-                        pass
                     try:
                         ensure_check_elem(driver, '#alert-ok', tmt=5, methode=By.CSS_SELECTOR, click=True)
                     except:
@@ -438,7 +661,7 @@ def main():
                             Select(num_friends_selector).select_by_visible_text(acom)
                             check_for_element(driver, '#valida-socio', click=True)
                             erorr_message = wait_for_element(driver, 'div[style="width:500px;"][class="error message"]')
-                            time.sleep(5)
+                            time.sleep(2)
                             if erorr_message: match_data = False
                         except Exception as e: 
                             print(e)
@@ -471,43 +694,34 @@ def main():
                         pass
                     break
                 if match_data == False: continue
+                sectors = None
                 try:
-                    driver.find_element(By.XPATH, '//*[@class="active"][@id="seleccion-entradas"]')
-                    continue
-                except:
-                    pass
-                try:
-                    ensure_check_elem(driver, '//*[@id="sectors-list"]/li',tmt=2)
-                except:
-                    print('No Valid Sectors')
-                    continue
-                while True:
-                    try:
-                        try:
-                            driver.find_element(
-                                By.XPATH, '//*[@id="onetrust-accept-btn-handler"]').click()
-                            driver.execute_script("document.querySelector('div.onetrust-pc-dark-filter.ot-fade-in').remove()")
-                        except:
-                            pass
-                        sectors = driver.find_elements(
-                            By.XPATH, '//*[@id="sectors-list"]/li')
-                        if ar == 'f':
-                            choice(sectors[:2]).click()
-                        elif ar == 'l':
-                            choice(sectors[2:]).click()
-                        else:
-                            choice(sectors).click()
-                        break
-                    except:
-                        time.sleep(.5)
                     try:
                         driver.find_element(
                             By.XPATH, '//*[@id="onetrust-accept-btn-handler"]').click()
                         driver.execute_script("document.querySelector('div.onetrust-pc-dark-filter.ot-fade-in').remove()")
                     except:
                         pass
+                    if 'l' == ar.lower(): sectors = check_for_elements(driver, "g[data-name^='Lateral'][class='sector']")
+                    elif 'f' == ar.lower(): sectors = check_for_elements(driver, "g[data-name^='Fondo'][class='sector']")
+                    else: sectors = check_for_elements(driver, "g[data-name][class='sector']")
+                    if type(sectors) == None: continue
+                    if len(sectors) < 1: continue
+                    random_sector = random.choice(sectors)
+                    random_sector.click()
+                except Exception as e:
+                    print(e)
+                    time.sleep(.5)
+                    continue
+                try:
+                    driver.find_element(
+                        By.XPATH, '//*[@id="onetrust-accept-btn-handler"]').click()
+                    driver.execute_script("document.querySelector('div.onetrust-pc-dark-filter.ot-fade-in').remove()")
+                except:
+                    pass
                 
                 bnms = []
+
                 for b in driver.find_elements(By.XPATH, '//*[@id="regular-price-list"]/li | //*[@id="vip-price-list"]/li'):
                     dp = b.get_attribute('data-price')
                     dpd = b.get_attribute('data-price-desc')
@@ -519,15 +733,17 @@ def main():
                         pass
                 vsel = '|'.join([f'//*[@data-price-desc="{bnm}"]/tspan' for bnm in bnms])
                 try:
-                    ensure_check_elem(driver, '//*[@class="newZoneClick"]',tmt=4)
+                    ensure_check_elem(driver, 'text > tspan[class="newZoneClick"]', methode=By.CSS_SELECTOR, tmt=4)
                 except:
                     print('No tickets')
                     continue
-                while True:
-
+                no_zones = True
+                while no_zones:
+                    active_zones = driver.find_elements(
+                            By.CSS_SELECTOR, 'text > tspan[class="newZoneClick"]')
+                    if len(active_zones) < 1: no_zones = False
                     try:
-                        zns = choice(driver.find_elements(
-                            By.XPATH, '//*[@class="newZoneClick"]')).click()
+                        zns = choice(active_zones).click()
                         break
                     except:
                         time.sleep(.6)
@@ -537,6 +753,7 @@ def main():
                         driver.execute_script("document.querySelector('div.onetrust-pc-dark-filter.ot-fade-in').remove()")
                     except:
                         pass
+                if not no_zones: continue
                 tk_niet = True
 
                 max_attempts = 5
@@ -590,58 +807,69 @@ def main():
                         ensure_check_elem(driver, 
                             '//*[@id="onetrust-accept-btn-handler"]', tmt=20, click=True)
                         driver.execute_script("document.querySelector('div.onetrust-pc-dark-filter.ot-fade-in').remove()")
-                    except Exception as e:
-                        print(e)
+                    except: pass
                     try:
                         u = driver.find_element(
                             By.XPATH, '//*[@class="nominative-row-title"]')
-                        data, fs = sf.read('noti.wav', dtype='float32')  
-                        sd.play(data, fs)
+                        data_play, fs = sf.read('noti.wav', dtype='float32')  
+                        sd.play(data_play, fs)
                         status = sd.wait()
                         seats = None
-                        driver.execute_script("window.localStorage.setItem('stopExecution', 'true');")
-                        match = check_for_element(driver, 'div[class="event-name"]')
-                        quantity = check_for_element(driver, 'label[id="numero-entradas"]')
-                        date_and_time = check_for_element(driver, 'li[class="selective-date"]')
-                        category = check_for_element(driver, 'li:has(table[class="shopDetail table"]) > p:nth-child(2)')
-                        sector = check_for_element(driver, 'li:has(table[class="shopDetail table"]) > p:nth-child(3)')
-                        seats_raw = check_for_elements(driver, 'li:has(table[class="shopDetail table"]) > p:nth-child(n+4)')
-                        total_price = check_for_element(driver, 'label[id="totalPrice"]')
-                        if quantity: quantity = quantity.text
-                        if date_and_time: date_and_time = date_and_time.text
-                        if category: category = category.text
-                        if sector: sector = sector.text
-                        if seats_raw: seats = [seat.text for seat in seats_raw]
-                        if total_price: total_price = total_price.text
+                        driver.execute_script("window.stopExecutionFlag = true;")
+                        if isSlack:
+                            match = check_for_element(driver, 'div[class="event-name"]')
+                            quantity = check_for_element(driver, 'label[id="numero-entradas"]')
+                            date_and_time = check_for_element(driver, 'li[class="selective-date"]')
+                            category = check_for_element(driver, 'li:has(table[class="shopDetail table"]) > p:nth-child(2)')
+                            sector = check_for_element(driver, 'li:has(table[class="shopDetail table"]) > p:nth-child(3)')
+                            seats_raw = check_for_elements(driver, 'li:has(table[class="shopDetail table"]) > p:nth-child(n+4)')
+                            total_price = check_for_element(driver, 'label[id="totalPrice"]')
+                            if quantity: quantity = quantity.text
+                            if match: match = match.text
+                            if date_and_time: date_and_time = date_and_time.text
+                            if category: category = category.text
+                            if sector: sector = sector.text
+                            if seats_raw: seats = [seat.text for seat in seats_raw]
+                            if total_price: total_price = total_price.text
 
-                        cookies = driver.get_cookies()
-                        ua = driver.execute_script('return navigator.userAgent')
-                        url = driver.current_url
-                        data = {
-                            "url": url,
-                            "match": match,
-                            "date": date_and_time,
-                            "quantity": quantity,
-                            "total": total_price,
-                            "category": category, 
-                            "sector": sector,
-                            "seats": seats,
-                            "cookies": cookies,
-                            "user_agent": ua
-                        }
-                        post_request(data)
+                            cookies = driver.get_cookies()
+                            ua = driver.execute_script('return navigator.userAgent')
+                            url = driver.current_url
+                            data = {
+                                "url": url,
+                                "match": match,
+                                "date": date_and_time,
+                                "quantity": quantity,
+                                "total": total_price,
+                                "category": category, 
+                                "sector": sector,
+                                "seats": seats,
+                                "cookies": cookies,
+                                "user_agent": ua
+                            }
+                            post_request(data)
                         restart = True
                         while restart:
-                            result = driver.execute_script("return window.localStorage.getItem('stopExecution');")
-                            if not json.loads(result):
-                                driver.back()
-                                try:
+                            try:
+                                alert = WebDriverWait(driver, 1).until(EC.alert_is_present())
+                                # You can decide to do nothing here, leaving the alert open
+                            except NoAlertPresentException:
+                                pass  # No alert to handle, continue the loop
+                            try:
+                                result = driver.execute_script("return window.stopExecutionFlag;")
+                                if result:
+                                    result = bool(result)
+                                if not result:
+                                    driver.back()
                                     WebDriverWait(driver, 5).until(
                                         lambda driver: driver.execute_script("return document.readyState") == "complete"
                                     )
-                                except:pass
-                                driver.refresh()
-                                restart = False
+                                    driver.refresh()
+                                    restart = False
+                            except (NoAlertPresentException, TimeoutException):
+                                # No alert or timeout occurred; continue the loop
+                                pass
+                            except:pass
                             time.sleep(5)
                         break
                     except Exception as e:
@@ -653,9 +881,36 @@ def main():
                 current_datetime = datetime.datetime.now()
                 formatted_datetime = current_datetime.strftime("%d %H:%M:%S")
                 error_message = f'{formatted_datetime} - An error occurred: {str(e)}'
+                print(error_message)
                 with open('error_log.txt', 'a') as file:
                     file.write(error_message + '\n')
-            except: pass
+                time.sleep(60)
+            except: time.sleep(60)
+
+
+def is_port_open(host, port):
+  try:
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(1)
+    sock.connect((host, port))
+    return True
+  except (socket.timeout, ConnectionRefusedError):
+    return False
+  finally:
+    sock.close()
+
 
 if __name__ == "__main__":
-    main()
+    eel.init('web')
+
+    port = 8000
+    while True:
+        try:
+            if not is_port_open('localhost', port):
+                eel.start('main.html', size=(600, 800), port=port)
+                break
+            else:
+                port += 1
+        except OSError as e:
+            print(e)
+    # main()

@@ -1,0 +1,53 @@
+20 11:46:58 - An error occurred: Message: disconnected: not connected to DevTools
+  (failed to check if window was closed: disconnected: not connected to DevTools)
+  (Session info: chrome=131.0.6778.205)
+Stacktrace:
+	GetHandleVerifier [0x00D8EC13+23731]
+	(No symbol) [0x00D1C394]
+	(No symbol) [0x00BFBE63]
+	(No symbol) [0x00BEB1DE]
+	(No symbol) [0x00BEBF4D]
+	(No symbol) [0x00BFC392]
+	(No symbol) [0x00BDD545]
+	(No symbol) [0x00C6E6B7]
+	(No symbol) [0x00C61E23]
+	(No symbol) [0x00C33F35]
+	(No symbol) [0x00C34EBD]
+	GetHandleVerifier [0x0106F0D3+3039603]
+	GetHandleVerifier [0x01082DEA+3120778]
+	GetHandleVerifier [0x0107B592+3089970]
+	GetHandleVerifier [0x00E243B0+635984]
+	(No symbol) [0x00D24DCD]
+	(No symbol) [0x00D22068]
+	(No symbol) [0x00D22205]
+	(No symbol) [0x00D14FD0]
+	BaseThreadInitThunk [0x76307BA9+25]
+	RtlInitializeExceptionChain [0x77AEC0CB+107]
+	RtlClearBits [0x77AEC04F+191]
+
+20 11:48:34 - An error occurred: Message: javascript error: Cannot read properties of null (reading 'remove')
+  (Session info: chrome=131.0.6778.205)
+Stacktrace:
+	GetHandleVerifier [0x0119EC13+23731]
+	(No symbol) [0x0112C394]
+	(No symbol) [0x0100BE63]
+	(No symbol) [0x01011971]
+	(No symbol) [0x01013AFC]
+	(No symbol) [0x0108C1C7]
+	(No symbol) [0x01071E5C]
+	(No symbol) [0x0108B46E]
+	(No symbol) [0x01071BF6]
+	(No symbol) [0x01043F35]
+	(No symbol) [0x01044EBD]
+	GetHandleVerifier [0x0147F0D3+3039603]
+	GetHandleVerifier [0x01492DEA+3120778]
+	GetHandleVerifier [0x0148B592+3089970]
+	GetHandleVerifier [0x012343B0+635984]
+	(No symbol) [0x01134DCD]
+	(No symbol) [0x01132068]
+	(No symbol) [0x01132205]
+	(No symbol) [0x01124FD0]
+	BaseThreadInitThunk [0x76307BA9+25]
+	RtlInitializeExceptionChain [0x77AEC0CB+107]
+	RtlClearBits [0x77AEC04F+191]
+
