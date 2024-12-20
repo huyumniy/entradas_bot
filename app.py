@@ -450,7 +450,7 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
         if not isVpn:
             proxy_switch_list = driver.find_elements(By.CSS_SELECTOR, '#proxySelectDiv > div > div > ul > li')
             if len(proxy_switch_list) == 3: proxy_switch_list[2].click()
-            else: proxy_switch_list[random.randint(3, len(proxy_switch_list))-1].click()
+            else: proxy_switch_list[random.randint(2, len(proxy_switch_list))-1].click()
             time.sleep(5)
         if isVpn:
             check_for_element(driver, '#proxySelectDiv', click=True)
