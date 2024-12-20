@@ -602,7 +602,6 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                     con_mad = ticketBotSettings['madridista'].get('password')
                     acom = str(ticketBotSettings['selection'])
 
-                print(madridista, ent, maxprc, minprc, ar, numero_mad, con_mad, acom)
                 # div[class="modal fullscreen"] #message-alert
                 # driver.delete_all_cookies()
                 try:
