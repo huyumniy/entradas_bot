@@ -721,7 +721,7 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                 
                 bnms = []
 
-                for b in driver.find_elements(By.XPATH, '//*[@id="regular-price-list"]/li | //*[@id="vip-price-list"]/li'):
+                for b in driver.find_elements(By.XPATH, '//*[@id="regular-price-list"]/li'):
                     dp = b.get_attribute('data-price')
                     dpd = b.get_attribute('data-price-desc')
                     try:
