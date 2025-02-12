@@ -5,8 +5,16 @@
     "description": "Entradas Bot Configuration",
     "content_scripts": [
       {
-        "matches": ["*://*.entradas.com/*"],
-        "js": ["src/content_scripts/content.js"]
+        "matches": ["*://*.entradas.com/*", "https://www.google.com/"],
+        "js": ["src/content_scripts/content.js"],
+        "all_frames": true
+      }
+
+    ],
+    "web_accessible_resources": [
+      {
+        "resources": ["src/images/stadium.png", "html/htmlFileName.html", "styles/*", "fonts/*", "src/content_scripts/iframe_inject.js"],
+        "matches": ["<all_urls>"]
       }
     ],
     "action": {
@@ -15,7 +23,10 @@
     "webRequest",
     "webRequestBlocking",
     "declarativeNetRequest",
-    "scripting"
+    "scripting",
+    "https://www.google.com/recaptcha/",
+    "https://www.google.com/"
+
   ],
       "default_popup": "src/popup/popup.html"
     },

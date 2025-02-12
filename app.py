@@ -6,6 +6,7 @@ import tempfile
 from flask import Flask, request, Response 
 from slack_sdk import WebClient
 from colorama import init, Fore
+from twocaptcha import TwoCaptcha
 import subprocess
 import requests
 import threading
@@ -27,75 +28,6 @@ from random import choice
 # from webdriver_manager.core.logger import __logger as wdm_logger
 init(autoreset=True)
 entrada = "https://www.entradas.com/artist/real-madrid-c-f/"
-
-class ProxyExtension:
-    manifest_json = """
-    {
-        "version": "1.0.0",
-        "manifest_version": 2,
-        "name": "Chrome Proxy",
-        "permissions": [
-            "proxy",
-            "tabs",
-            "unlimitedStorage",
-            "storage",
-            "<all_urls>",
-            "webRequest",
-            "webRequestBlocking"
-        ],
-        "background": {"scripts": ["background.js"]},
-        "minimum_chrome_version": "76.0.0"
-    }
-    """
-
-    background_js = """
-    var config = {
-        mode: "fixed_servers",
-        rules: {
-            singleProxy: {
-                scheme: "http",
-                host: "%s",
-                port: %d
-            },
-            bypassList: ["localhost"]
-        }
-    };
-
-    chrome.proxy.settings.set({value: config, scope: "regular"}, function() {});
-
-    function callbackFn(details) {
-        return {
-            authCredentials: {
-                username: "%s",
-                password: "%s"
-            }
-        };
-    }
-
-    chrome.webRequest.onAuthRequired.addListener(
-        callbackFn,
-        { urls: ["<all_urls>"] },
-        ['blocking']
-    );
-    """
-
-    def __init__(self, host, port, user, password):
-        self._dir = os.path.normpath(tempfile.mkdtemp())
-
-        manifest_file = os.path.join(self._dir, "manifest.json")
-        with open(manifest_file, mode="w") as f:
-            f.write(self.manifest_json)
-        background_js = self.background_js % (host, int(port), user, password)
-        background_file = os.path.join(self._dir, "background.js")
-        with open(background_file, mode="w") as f:
-            f.write(background_js)
-
-    @property
-    def directory(self):
-        return self._dir
-
-    def __del__(self):
-        shutil.rmtree(self._dir)
 
 def wait_for_element(driver, selector, timeout=10, xpath=False, debugMode=False):
     try:
@@ -157,18 +89,6 @@ def ensure_check_elem(driver, selector, methode=By.XPATH, tmt=20, click=False):
         tmt0 += 0.5
         time.sleep(0.5)
     return var
-
-
-def parse_data_from_file(file_path):
-    with open(file_path, 'r') as file:
-        lines = file.readlines()
-
-    # Parse each line into (email, password, proxy)
-    data = ''
-    for line in lines:
-        data += line + '\n'
-    
-    return data
 
 
 def get_local_data(driver):
@@ -455,425 +375,28 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
         connect_vpn(driver)
     driver.get(initialUrl)
     print(Fore.GREEN + f"Thread {thread_number}: Successfully started!\n")
-    while True:
+    time.sleep(10)
+    iframe = check_for_element(driver=driver, selector='#recaptcha-prebook > div > div.grecaptcha-logo > iframe', debug=True)
+    if iframe:
         try:
-            # madridista = input(
-            #     'Madridista [Y:N] (default is N):').lower().strip() == "y"
-            # if madridista:
-            #     numero_mad=input('Número de Socio/Madridista Premium: ').strip()
-            #     con_mad=input('Contraseña: ').strip()
-            #     while True:
-            #         try:
-            #             acom = int(input('Acompañantes : '))
-            #             try:
-            #                 if acom in range(10):
-            #                     break
-            #             except:
-            #                 raise Exception('INVLD 1')
-            #         except:
-            #             print('Please insert correct values')
-            # while True:
-            #     try:
-            #         ent = int(input('NUM ENTRADAS : '))
-            #         try:
-            #             if ent in range(1, 7):
-            #                 break
-            #         except:
-            #             raise Exception('INVLD 2')
-            #     except:
-            #         print('Please insert correct values')
-            # while True:
-            #     try:
-            #         maxprc = int(input('Max Price: '))
-            #         break
-            #     except:
-            #         print('Please insert correct values')
-            # while True:
-            #     try:
-            #         minprc = int(input('Min Price: '))
-            #         break
-            #     except:
-            #         print('Please insert correct values')
-            # while True:
-            #     try:
-            #         ar = input('F : FRONTAL // L: LATERAL //0 : ALL : ').lower().strip()
-            #         if ar in ['f', 'l', '0']:
-            #             break
-            #         else:
-            #             raise Exception('NOT FL0')
-            #     except:
-            #         print('Please insert correct values')
-
-            # driver.get(lnks[id1])
-            # ensure_check_elem(driver,'//button[./span[contains(text(),"ar en")]]', click=True)
-            no_stadium = True
-            ticketBotSettings = None
-            while no_stadium:
-                window_handles = driver.window_handles  # Fetch current window handles
-                for index, handle in enumerate(window_handles):
-                    try:
-                        # Use JavaScript to check if the document is still available in the specific window
-                        script = """
-                            try {
-                                var element = document.evaluate(arguments[0], document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-                                if (element) {
-                                    return { found: true, text: element.textContent };
-                                } else {
-                                    return { found: false };
-                                }
-                            } catch (e) {
-                                return { error: true };
-                            }
-                        """
-                        result = driver.execute_script(script, '//*[@id="num-entradas"]')  # Adjust the XPath
-
-                        # If there was an error in accessing the window/tab
-                        if 'error' in result and result['error']:
-                            print(f"Error accessing tab {index + 1} ({handle})")
-                            continue  # Skip to the next tab
-
-                        # If the element is found
-                        if result['found']:
-                            # Try fetching data from IndexedDB first
-                            try:
-                                ticketBotSettings = get_indexeddb_data(driver, 'TicketBotDB', 'settings')  # Replace with actual DB name and store
-                            except Exception as e:
-                                print(f"Error fetching data from IndexedDB: {e}")
-                                ticketBotSettings = None
-
-                            # Fallback to localStorage if IndexedDB data is not found
-                            if not ticketBotSettings:
-                                ticketBotSettings = get_local_data(driver)  # Get local data for the tab
-                                ticketBotSettings = json.loads(ticketBotSettings) if ticketBotSettings else None
-
-                            if ticketBotSettings:
-                                print(f"Element found in tab {index + 1}: {result['text']}, {ticketBotSettings}")
-                                no_stadium = False
-                                break  # Exit the loop if the element is found
-                        else:
-                            print(f"Element not found in tab {index + 1} ({handle})")
-                    except Exception as e:
-                        # Handle any unexpected exceptions (e.g., window closed during iteration)
-                        print(f"Unexpected error in tab {index + 1}: {str(e)}")
-                time.sleep(5)
-
-            print('FOUND STADIUM')
-
-            while True:
-                try:
-                    r = driver.title
-                    break
-                except:
-                    try:
-                        driver.switch_to.window(driver.window_handles[0])
-                    except:
-                        pass
-
-            while True:
-                # Fetch data from IndexedDB or localStorage
-                try:
-                    ticketBotSettings = json.loads(get_indexeddb_data(driver, 'TicketBotDB', 'settings'))
-                except:
-                    ticketBotSettings = json.loads(get_local_data(driver))
-
-                madridista = bool(ticketBotSettings['isMadridista'])
-                ent = int(ticketBotSettings['amount'])
-                maxprc = int(ticketBotSettings['maxPrice'])
-                minprc = int(ticketBotSettings['minPrice'])
-                ar = ticketBotSettings['radio']
-                numero_mad = None
-                con_mad = None
-                acom = None
-                result = driver.execute_script("return window.stopExecutionFlag;")
-
-                if result:
-                    time.sleep(5)
-                    continue
-
-                if ticketBotSettings['madridista']:
-                    numero_mad = ticketBotSettings['madridista'].get('login')
-                    con_mad = ticketBotSettings['madridista'].get('password')
-                    acom = str(ticketBotSettings['selection'])
-
-                print(madridista, ent, maxprc, minprc, ar, numero_mad, con_mad, acom)
-                
-                # driver.delete_all_cookies()
-                driver.refresh()
-                while 'laliga.queue-it.net' in driver.current_url: time.sleep(1)
-                try:
-                    ensure_check_elem(driver, '//*[@class="active"][@id="seleccion-entradas"] | //*[@id="num-entradas"]')
-
-                except:
-                    print('Can\'t find stadium page. Waiting for 30 sec.')
-                    time.sleep(30)
-                    continue
-                    # try:
-                    #     ensure_check_elem(driver, '//*[contains(text(),"nible a par")]',tmt=1)
-                    #     print('No sale')
-                    #     break
-                    # except:
-                    #     print('ISK0')
-                    #     break
-                match_data = True
-                while match_data:
-                    try:
-                        check_for_element(driver, '//*[@id="onetrust-accept-btn-handler"]', xpath=True, click=True)
-                        driver.execute_script("document.querySelector('div.onetrust-pc-dark-filter.ot-fade-in').remove()")
-                    except:
-                        pass
-                    
-                    try:
-                        ensure_check_elem(driver, '#alert-ok', tmt=5, methode=By.CSS_SELECTOR, click=True)
-                    except:
-                        pass
-                    if madridista:
-                        # try:
-                        #     ensure_check_elem(driver, '//*[@id="select-ticket-container"]//a[contains(text(),"ista Pr")]',click=True)
-                        #     ensure_check_elem(driver, '//*[@id="nsocioG"]',click=True).send_keys(numero_mad)
-                        #     ensure_check_elem(driver, '//*[@id="nsocioG"]',click=True).send_keys(con_mad)
-                        #     Select(check_for_element(driver, '//*[@id="num-entradas"]', xpath=True)).select_by_index(ent)
-                        # except:
-                        #     pass
-                        try:
-                            is_member_field = check_for_element(driver, 'div[id="member-login-socios"][style="display: block;"]')
-                            if not is_member_field: 
-                                check_for_element(driver, '#socio-no-abonado', click=True)
-                                time.sleep(1)
-                            login_input = check_for_element(driver, '#nsocio', click=True)
-                            login_input.clear()
-                            login_input.send_keys(numero_mad)
-                            password_input = check_for_element(driver, '#pinsocio', click=True)
-                            password_input.clear()
-                            password_input.send_keys(con_mad)
-                            num_friends_selector = check_for_element(driver, '#num-friends')
-                            Select(num_friends_selector).select_by_visible_text(acom)
-                            check_for_element(driver, '#valida-socio', click=True)
-                            erorr_message = wait_for_element(driver, 'div[style="width:500px;"][class="error message"]')
-                            time.sleep(2)
-                            if erorr_message: match_data = False
-                        except Exception as e: 
-                            print(e)
-                            time.sleep(5)
-                            match_data = False
-                    else:
-                        try:
-                            try:
-                                ensure_check_elem(driver, '//*[@id="num-entradas"]', methode=By.XPATH, tmt=2)
-                            except: pass
-                            check_for_element(driver, '#no-socio-abonado', click=True)
-                            check_for_element(driver, '#no-socio-simpatizante', click=True)
-                            Select(driver.find_element(
-                                By.XPATH, '//*[@id="num-entradas"]')).select_by_index(ent)
-                        except Exception as e: 
-                            time.sleep(5)
-                            match_data = False
-                    try:
-                        ensure_check_elem(driver, '#alert-ok', tmt=2, methode=By.CSS_SELECTOR, click=True)
-                    except:
-                        pass
-                    try:
-                        driver.find_element(
-                            By.XPATH, '//*[@id="boton-seleccion-entradas"]').click()
-                    except:
-                        pass
-                    try:
-                        driver.find_element(By.ID, 'alert-ok').click()
-                    except:
-                        pass
-                    break
-                if match_data == False: continue
-                sectors = None
-                try:
-                    try:
-                        driver.find_element(
-                            By.XPATH, '//*[@id="onetrust-accept-btn-handler"]').click()
-                        driver.execute_script("document.querySelector('div.onetrust-pc-dark-filter.ot-fade-in').remove()")
-                    except:
-                        pass
-                    if 'l' == ar.lower(): sectors = check_for_elements(driver, "g[data-name^='Lateral'][class='sector']")
-                    elif 'f' == ar.lower(): sectors = check_for_elements(driver, "g[data-name^='Fondo'][class='sector']")
-                    else: sectors = check_for_elements(driver, "g[data-name][class='sector']")
-                    if type(sectors) == None: continue
-                    if len(sectors) < 1: continue
-                    random_sector = random.choice(sectors)
-                    random_sector.click()
-                except Exception as e:
-                    print(e)
-                    time.sleep(.5)
-                    continue
-                try:
-                    driver.find_element(
-                        By.XPATH, '//*[@id="onetrust-accept-btn-handler"]').click()
-                    driver.execute_script("document.querySelector('div.onetrust-pc-dark-filter.ot-fade-in').remove()")
-                except:
-                    pass
-                
-                bnms = []
-
-                for b in driver.find_elements(By.XPATH, '//*[@id="regular-price-list"]/li | //*[@id="vip-price-list"]/li'):
-                    dp = b.get_attribute('data-price')
-                    dpd = b.get_attribute('data-price-desc')
-                    try:
-                        if int(dp) in range(minprc, maxprc+1):
-                            bnms.append(dpd)
-                            b.click()
-                    except:
-                        pass
-                vsel = '|'.join([f'//*[@data-price-desc="{bnm}"]/tspan' for bnm in bnms])
-                try:
-                    ensure_check_elem(driver, 'text > tspan[class="newZoneClick"]', methode=By.CSS_SELECTOR, tmt=4)
-                except:
-                    print('No tickets')
-                    continue
-                no_zones = True
-                while no_zones:
-                    active_zones = driver.find_elements(
-                            By.CSS_SELECTOR, 'text > tspan[class="newZoneClick"]')
-                    if len(active_zones) < 1: no_zones = False
-                    try:
-                        zns = choice(active_zones).click()
-                        break
-                    except:
-                        time.sleep(.6)
-                    try:
-                        driver.find_element(
-                            By.XPATH, '//*[@id="onetrust-accept-btn-handler"]').click()
-                        driver.execute_script("document.querySelector('div.onetrust-pc-dark-filter.ot-fade-in').remove()")
-                    except:
-                        pass
-                if not no_zones: continue
-                tk_niet = True
-
-                max_attempts = 5
-                attempts = 0
-                while True:
-                    try:
-                        tur = driver.find_element(By.ID, 'alert-ok').click()
-                        tk_niet = False
-                        break
-                    except:
-                        attempts += 1
-                        time.sleep(1)
-                        if attempts >= max_attempts:
-                            print("Exceeded maximum attempts. Breaking from the loop.")
-                            tk_niet = False
-                            break
-
-                    try:
-                        driver.find_element(By.XPATH, '//*[@class="seatSelected"]')
-                        tk_niet = True
-                        break
-                    except:
-                        pass
-                    time.sleep(.5)
-                if not tk_niet:
-                    print('no tickets available')
-                    continue
-
-                ensure_check_elem(driver, '//*[@id="cuerpo-resumen-compra"]/tr')
-                tr_dtx = []
-                for tr in driver.find_elements(By.XPATH, '//*[@id="cuerpo-resumen-compra"]/tr'):
-                    tr_dtx.append([int(xt) for xt in tr.text.split('€')[0].split(' ')[-4:-2]])
-                filas = list(set([e[0] for e in tr_dtx]))
-                asientos = [e[1] for e in tr_dtx]
-                mx_as = max(asientos)
-                mn_as = min(asientos)
-
-                if asientos[0] % 2 == 0:
-                    sts = [s for s in range(mn_as, mx_as+1) if s % 2 == 0]
-                else:
-                    sts = [s for s in range(mn_as, mx_as+1) if s % 2 != 0]
-                try: total=float(ensure_check_elem(driver, '//*[@id="total-price"]').text.split(' ')[0].replace(',',''))
-                except: pass
-                try: total=float(ensure_check_elem(driver, '//*[@id="total-price"]').text.split(' ')[0].replace(',','.'))
-                except: pass
-                # if not(total>minprc*ent and maxprc*ent>total):
-                #     print('problem')
-                if list(set(sts)) == list(set(asientos)) and (total>minprc*ent and maxprc*ent>total):
-                    ensure_check_elem(driver, '//*[@id="boton-compra"]', click=True)
-                    try:
-                        ensure_check_elem(driver, 
-                            '//*[@id="onetrust-accept-btn-handler"]', tmt=20, click=True)
-                        driver.execute_script("document.querySelector('div.onetrust-pc-dark-filter.ot-fade-in').remove()")
-                    except: pass
-                    try:
-                        u = driver.find_element(
-                            By.XPATH, '//*[@class="nominative-row-title"]')
-                        data_play, fs = sf.read('noti.wav', dtype='float32')  
-                        sd.play(data_play, fs)
-                        status = sd.wait()
-                        seats = None
-                        driver.execute_script("window.stopExecutionFlag = true;")
-                        if isSlack:
-                            match = check_for_element(driver, 'div[class="event-name"]')
-                            quantity = check_for_element(driver, 'label[id="numero-entradas"]')
-                            date_and_time = check_for_element(driver, 'li[class="selective-date"]')
-                            category = check_for_element(driver, 'li:has(table[class="shopDetail table"]) > p:nth-child(2)')
-                            sector = check_for_element(driver, 'li:has(table[class="shopDetail table"]) > p:nth-child(3)')
-                            seats_raw = check_for_elements(driver, 'li:has(table[class="shopDetail table"]) > p:nth-child(n+4)')
-                            total_price = check_for_element(driver, 'label[id="totalPrice"]')
-                            if quantity: quantity = quantity.text
-                            if match: match = match.text
-                            if date_and_time: date_and_time = date_and_time.text
-                            if category: category = category.text
-                            if sector: sector = sector.text
-                            if seats_raw: seats = [seat.text for seat in seats_raw]
-                            if total_price: total_price = total_price.text
-
-                            cookies = driver.get_cookies()
-                            ua = driver.execute_script('return navigator.userAgent')
-                            url = driver.current_url
-                            data = {
-                                "url": url,
-                                "match": match,
-                                "date": date_and_time,
-                                "quantity": quantity,
-                                "total": total_price,
-                                "category": category, 
-                                "sector": sector,
-                                "seats": seats,
-                                "cookies": cookies,
-                                "user_agent": ua
-                            }
-                            post_request(data)
-                        restart = True
-                        while restart:
-                            try:
-                                alert = WebDriverWait(driver, 1).until(EC.alert_is_present())
-                                # You can decide to do nothing here, leaving the alert open
-                            except NoAlertPresentException:
-                                pass  # No alert to handle, continue the loop
-                            try:
-                                result = driver.execute_script("return window.stopExecutionFlag;")
-                                if result:
-                                    result = bool(result)
-                                if not result:
-                                    driver.back()
-                                    WebDriverWait(driver, 5).until(
-                                        lambda driver: driver.execute_script("return document.readyState") == "complete"
-                                    )
-                                    driver.refresh()
-                                    restart = False
-                            except (NoAlertPresentException, TimeoutException):
-                                # No alert or timeout occurred; continue the loop
-                                pass
-                            except:pass
-                            time.sleep(5)
-                        break
-                    except Exception as e:
-                        print(e)
-                else:
-                    print(f'tickets aren\'t near each other, or Total price {total/ent}/ticket not in range ')
-        except Exception as e:
+            # driver.switch_to.frame(iframe)
+            # captcha = check_for_element(driver=driver, selector='#recaptcha-token', debug=True)
+            # print(captcha.get_attribute('value'), "CAPTCHA")
+            solver = TwoCaptcha('ab8431ca9bda62c92650bc4040ba1754', recaptchaTimeout=60)
+            sitekey = check_for_element(driver=driver,selector='#recaptcha-prebook', debug=True).get_attribute('data-sitekey')
+            print(sitekey)
             try:
-                current_datetime = datetime.datetime.now()
-                formatted_datetime = current_datetime.strftime("%d %H:%M:%S")
-                error_message = f'{formatted_datetime} - An error occurred: {str(e)}'
-                with open('error_log.txt', 'a') as file:
-                    file.write(error_message + '\n')
-                time.sleep(60)
-            except: time.sleep(60)
+                result = solver.recaptcha(
+                    sitekey=sitekey,
+                    url=driver.current_url,
+                    invisible=1,
+                    version='v3')
+                print('captcha result:', result)
+            except Exception as e: print("captcha error:",e)
 
+        except:
+            driver.switch_to.default_content()
+    input('continue?')
 
 def is_port_open(host, port):
   try:
@@ -889,7 +412,7 @@ def is_port_open(host, port):
 
 if __name__ == "__main__":
     eel.init('web')
-
+    
     port = 8000
     while True:
         try:
