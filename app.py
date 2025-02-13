@@ -187,7 +187,7 @@ def connect_vpn(driver):
             check_for_element(driver, '#app > div > div.simple-layout > div.simple-layout__body > div > div > button', click=True)
             check_for_element(driver, 'button[class="button button--pink consent-text-controls__action"]', click=True)
             is_connected = check_for_element(driver, 'div[class="play-button play-button--pause"]')
-            if is_connected: 
+            if is_connected:
                 driver.find_element(By.CSS_SELECTOR, 'div[class="play-button play-button--pause"]').click()
             select_element = driver.find_element(By.CSS_SELECTOR, 'div[class="select-location"]')
             select_element.click()
@@ -293,7 +293,7 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
     
     # Create a Service object using the chromedriver path
     service = Service(executable_path=chromedriver_path)
-    if os.getlogin() in ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10', 'S11', 'S12', 'S13', 'S14', 'S15',
+    if os.getlogin() in ['vladk','S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10', 'S11', 'S12', 'S13', 'S14', 'S15',
     'S3U1', 'S3U2', 'S3U3', 'S3U4', 'S3U5', 'S3U6', 'S3U7', 'S3U8', 'S3U9', 'S3U10', 'S3U11', 'S3U12', 'S3U13', 'S3U14', 'S3U15', 'S3U16',
     'Admin3']:
         driver = webdriver.Chrome(
@@ -376,26 +376,17 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
     driver.get(initialUrl)
     print(Fore.GREEN + f"Thread {thread_number}: Successfully started!\n")
     time.sleep(10)
-    iframe = check_for_element(driver=driver, selector='#recaptcha-prebook > div > div.grecaptcha-logo > iframe', debug=True)
-    if iframe:
-        try:
-            # driver.switch_to.frame(iframe)
-            # captcha = check_for_element(driver=driver, selector='#recaptcha-token', debug=True)
-            # print(captcha.get_attribute('value'), "CAPTCHA")
-            solver = TwoCaptcha('ab8431ca9bda62c92650bc4040ba1754', recaptchaTimeout=60)
-            sitekey = check_for_element(driver=driver,selector='#recaptcha-prebook', debug=True).get_attribute('data-sitekey')
-            print(sitekey)
-            try:
-                result = solver.recaptcha(
-                    sitekey=sitekey,
-                    url=driver.current_url,
-                    invisible=1,
-                    version='v3')
-                print('captcha result:', result)
-            except Exception as e: print("captcha error:",e)
 
-        except:
-            driver.switch_to.default_content()
+    solver = TwoCaptcha('ab8431ca9bda62c92650bc4040ba1754')
+    sitekey = check_for_element(driver=driver,selector='.g-recaptcha', debug=True).get_attribute('data-sitekey')
+    print(sitekey)
+    try:
+        result = solver.recaptcha(
+            sitekey=sitekey,
+            url=initialUrl)
+        print('captcha result:', result)
+    except Exception as e: print("captcha error:",e)
+
     input('continue?')
 
 def is_port_open(host, port):
@@ -411,6 +402,7 @@ def is_port_open(host, port):
 
 
 if __name__ == "__main__":
+    print(os.getlogin())
     eel.init('web')
     
     port = 8000

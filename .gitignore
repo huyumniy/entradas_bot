@@ -20,3 +20,6 @@ slack-post
 slack-post/*
 /slack-post/*
 slack_token.txt
+/Scripts
+entradas_extension/node_modules
+entradas_extension/package-lock.json

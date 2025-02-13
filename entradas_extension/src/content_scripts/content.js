@@ -5,23 +5,26 @@ window.onload = () => {
     maxPrice: null,
     amount: null,
     isMadridista: false,
-    madridista: { login: '222222', password: '2222222' } && null,
+    madridista: { login: "222222", password: "2222222" } && null,
     radio: null,
     selection: 1,
   };
-  
+
   let captcha_token = null;
-  
-  handleCaptchaReceive(function(doc) {
-    if (doc.querySelector('#recaptcha-token')?.value) {
-      captcha_token = doc.querySelector('#recaptcha-token').value;
-      console.log(captcha_token)
-      main()
+  let data_sitekey = null;
+  handleCaptchaReceive(function (doc) {
+    if (doc.querySelector("#recaptcha-token")?.value) {
+      captcha_token = doc.querySelector("#recaptcha-token").value;
+      data_sitekey = document
+        .querySelector("div[data-sitekey]")
+        .getAttribute("data-sitekey");
+      console.log(captcha_token, data_sitekey);
+      main();
     }
-  })
+  });
 
   // Open IndexedDB and load stored settings if available
-  const sessionId = document.querySelector('#sessionId').getAttribute('value')
+  const sessionId = document.querySelector("#sessionId").getAttribute("value");
   const request = indexedDB.open("TicketBotDB", 1);
 
   request.onupgradeneeded = function (event) {
@@ -63,33 +66,33 @@ window.onload = () => {
   function createForm() {
     const body = document.body;
 
-    const settingsFormContainer = document.createElement('div');
-    settingsFormContainer.id = 'settingsFormContainer';
+    const settingsFormContainer = document.createElement("div");
+    settingsFormContainer.id = "settingsFormContainer";
     body.appendChild(settingsFormContainer);
 
-    const form = document.createElement('form');
-    form.id = 'settingsForm';
-    form.style.display = 'flex';
-    form.style.flexDirection = 'column';
+    const form = document.createElement("form");
+    form.id = "settingsForm";
+    form.style.display = "flex";
+    form.style.flexDirection = "column";
 
-    const labels = ['minPrice', 'maxPrice', 'amount'];
+    const labels = ["minPrice", "maxPrice", "amount"];
     labels.forEach((label) => {
-      const inputDiv = document.createElement('div');
-      inputDiv.style.display = 'flex';
-      inputDiv.style.alignItems = 'center';
-      inputDiv.style.justifyContent = 'space-between';
-      inputDiv.style.marginBottom = '10px';
+      const inputDiv = document.createElement("div");
+      inputDiv.style.display = "flex";
+      inputDiv.style.alignItems = "center";
+      inputDiv.style.justifyContent = "space-between";
+      inputDiv.style.marginBottom = "10px";
 
-      const labelElement = document.createElement('label');
+      const labelElement = document.createElement("label");
       labelElement.for = label;
       labelElement.textContent = `${label}:`;
-      labelElement.style.marginRight = '10px';
+      labelElement.style.marginRight = "10px";
 
-      const inputElement = document.createElement('input');
-      inputElement.type = 'text';
+      const inputElement = document.createElement("input");
+      inputElement.type = "text";
       inputElement.id = label;
       inputElement.name = label;
-      inputElement.value = settings[label] !== null ? settings[label] : '';
+      inputElement.value = settings[label] !== null ? settings[label] : "";
 
       inputDiv.appendChild(labelElement);
       inputDiv.appendChild(inputElement);
@@ -98,30 +101,30 @@ window.onload = () => {
 
     // Radio buttons
     const radioOptions = [
-      { label: 'F : FRONTAL', value: 'F' },
-      { label: 'L : LATERAL', value: 'L' },
-      { label: '0 : ALL', value: '0' }
+      { label: "F : FRONTAL", value: "F" },
+      { label: "L : LATERAL", value: "L" },
+      { label: "0 : ALL", value: "0" },
     ];
 
-    const radioGroupLabel = document.createElement('div');
-    radioGroupLabel.textContent = 'Select View:';
+    const radioGroupLabel = document.createElement("div");
+    radioGroupLabel.textContent = "Select View:";
     form.appendChild(radioGroupLabel);
 
-    radioOptions.forEach(option => {
-      const radioDiv = document.createElement('div');
-      radioDiv.style.display = 'flex';
-      radioDiv.style.alignItems = 'center';
-      radioDiv.style.gap = '6px';
+    radioOptions.forEach((option) => {
+      const radioDiv = document.createElement("div");
+      radioDiv.style.display = "flex";
+      radioDiv.style.alignItems = "center";
+      radioDiv.style.gap = "6px";
 
-      const radioLabel = document.createElement('label');
+      const radioLabel = document.createElement("label");
       radioLabel.for = option.value;
       radioLabel.textContent = option.label;
-      radioLabel.style.marginRight = '5px';
+      radioLabel.style.marginRight = "5px";
 
-      const radioInput = document.createElement('input');
-      radioInput.type = 'radio';
+      const radioInput = document.createElement("input");
+      radioInput.type = "radio";
       radioInput.id = option.value;
-      radioInput.name = 'viewOption';
+      radioInput.name = "viewOption";
       radioInput.value = option.value;
 
       if (settings.radio === option.value) {
@@ -134,47 +137,51 @@ window.onload = () => {
     });
 
     // Madridista checkbox and login/password fields
-    const madridistaDiv = document.createElement('div');
-    madridistaDiv.style.display = 'flex';
-    madridistaDiv.style.alignItems = 'center';
-    madridistaDiv.style.marginBottom = '10px';
+    const madridistaDiv = document.createElement("div");
+    madridistaDiv.style.display = "flex";
+    madridistaDiv.style.alignItems = "center";
+    madridistaDiv.style.marginBottom = "10px";
 
-    const madridistaLabel = document.createElement('label');
-    madridistaLabel.for = 'isMadridista';
-    madridistaLabel.textContent = 'Madridista?';
-    madridistaLabel.style.marginRight = '10px';
+    const madridistaLabel = document.createElement("label");
+    madridistaLabel.for = "isMadridista";
+    madridistaLabel.textContent = "Madridista?";
+    madridistaLabel.style.marginRight = "10px";
 
-    const madridistaCheckbox = document.createElement('input');
-    madridistaCheckbox.type = 'checkbox';
-    madridistaCheckbox.id = 'isMadridista';
+    const madridistaCheckbox = document.createElement("input");
+    madridistaCheckbox.type = "checkbox";
+    madridistaCheckbox.id = "isMadridista";
     madridistaCheckbox.checked = settings.isMadridista;
 
     madridistaDiv.appendChild(madridistaCheckbox);
     madridistaDiv.appendChild(madridistaLabel);
     form.appendChild(madridistaDiv);
 
-    const madridistaInputsDiv = document.createElement('div');
-    madridistaInputsDiv.style.display = madridistaCheckbox.checked ? 'flex' : 'none';
-    madridistaInputsDiv.style.flexDirection = 'column';
-    madridistaInputsDiv.style.marginBottom = '10px';
+    const madridistaInputsDiv = document.createElement("div");
+    madridistaInputsDiv.style.display = madridistaCheckbox.checked
+      ? "flex"
+      : "none";
+    madridistaInputsDiv.style.flexDirection = "column";
+    madridistaInputsDiv.style.marginBottom = "10px";
 
-    ['login', 'password'].forEach((field) => {
-      const inputDiv = document.createElement('div');
-      inputDiv.style.display = 'flex';
-      inputDiv.style.alignItems = 'center';
-      inputDiv.style.justifyContent = 'space-between';
-      inputDiv.style.marginBottom = '10px';
+    ["login", "password"].forEach((field) => {
+      const inputDiv = document.createElement("div");
+      inputDiv.style.display = "flex";
+      inputDiv.style.alignItems = "center";
+      inputDiv.style.justifyContent = "space-between";
+      inputDiv.style.marginBottom = "10px";
 
-      const fieldLabel = document.createElement('label');
+      const fieldLabel = document.createElement("label");
       fieldLabel.for = field;
-      fieldLabel.textContent = `${field.charAt(0).toUpperCase() + field.slice(1)}:`;
-      fieldLabel.style.marginRight = '10px';
+      fieldLabel.textContent = `${
+        field.charAt(0).toUpperCase() + field.slice(1)
+      }:`;
+      fieldLabel.style.marginRight = "10px";
 
-      const inputField = document.createElement('input');
-      inputField.type = field === 'password' ? 'password' : 'text';
+      const inputField = document.createElement("input");
+      inputField.type = field === "password" ? "password" : "text";
       inputField.id = field;
       inputField.name = field;
-      inputField.value = settings.madridista ? settings.madridista[field] : '';
+      inputField.value = settings.madridista ? settings.madridista[field] : "";
       inputField.disabled = !madridistaCheckbox.checked;
 
       inputDiv.appendChild(fieldLabel);
@@ -182,22 +189,22 @@ window.onload = () => {
       madridistaInputsDiv.appendChild(inputDiv);
     });
 
-    const selectDiv = document.createElement('div');
-    selectDiv.style.display = 'flex';
-    selectDiv.style.alignItems = 'center';
-    selectDiv.style.marginBottom = '10px';
+    const selectDiv = document.createElement("div");
+    selectDiv.style.display = "flex";
+    selectDiv.style.alignItems = "center";
+    selectDiv.style.marginBottom = "10px";
 
-    const selectLabel = document.createElement('label');
-    selectLabel.for = 'selection';
-    selectLabel.textContent = 'Companions:';
-    selectLabel.style.marginRight = '10px';
+    const selectLabel = document.createElement("label");
+    selectLabel.for = "selection";
+    selectLabel.textContent = "Companions:";
+    selectLabel.style.marginRight = "10px";
 
-    const selectField = document.createElement('select');
-    selectField.id = 'selection';
-    selectField.name = 'selection';
+    const selectField = document.createElement("select");
+    selectField.id = "selection";
+    selectField.name = "selection";
 
     [0, 1, 2, 3, 4].forEach((optionValue) => {
-      const option = document.createElement('option');
+      const option = document.createElement("option");
       option.value = optionValue;
       option.textContent = optionValue;
       if (settings.selection === optionValue) {
@@ -212,67 +219,69 @@ window.onload = () => {
 
     form.appendChild(madridistaInputsDiv);
 
-    madridistaCheckbox.addEventListener('change', (e) => {
+    madridistaCheckbox.addEventListener("change", (e) => {
       const isChecked = e.target.checked;
-      madridistaInputsDiv.style.display = isChecked ? 'flex' : 'none';
-      document.getElementById('login').disabled = !isChecked;
-      document.getElementById('password').disabled = !isChecked;
+      madridistaInputsDiv.style.display = isChecked ? "flex" : "none";
+      document.getElementById("login").disabled = !isChecked;
+      document.getElementById("password").disabled = !isChecked;
 
       if (!isChecked) {
-        document.getElementById('login').value = '';
-        document.getElementById('password').value = '';
-        document.getElementById('selection').value = 1; // Reset select to default
+        document.getElementById("login").value = "";
+        document.getElementById("password").value = "";
+        document.getElementById("selection").value = 1; // Reset select to default
         settings.madridista = null;
       } else {
-        settings.madridista = { login: '', password: '' };
+        settings.madridista = { login: "", password: "" };
       }
       settings.isMadridista = isChecked;
     });
 
-    const chooseSectorsButton = document.createElement('button');
-    chooseSectorsButton.type = 'button';
-    chooseSectorsButton.textContent = 'Choose sectors';
-    chooseSectorsButton.addEventListener('click', sectorsPicker);
-    chooseSectorsButton.style.width = '50%';
-    chooseSectorsButton.style.marginBottom = '5px';
-    form.appendChild(chooseSectorsButton)
+    const chooseSectorsButton = document.createElement("button");
+    chooseSectorsButton.type = "button";
+    chooseSectorsButton.textContent = "Choose sectors";
+    chooseSectorsButton.addEventListener("click", sectorsPicker);
+    chooseSectorsButton.style.width = "50%";
+    chooseSectorsButton.style.marginBottom = "5px";
+    form.appendChild(chooseSectorsButton);
 
-    const updateButton = document.createElement('button');
-    updateButton.type = 'button';
-    updateButton.textContent = 'Update Settings and Reload';
-    updateButton.addEventListener('click', updateSettings);
-    updateButton.style.width = '100%';
+    const updateButton = document.createElement("button");
+    updateButton.type = "button";
+    updateButton.textContent = "Update Settings and Reload";
+    updateButton.addEventListener("click", updateSettings);
+    updateButton.style.width = "100%";
     form.appendChild(updateButton);
 
     settingsFormContainer.appendChild(form);
-    settingsFormContainer.style.position = 'fixed';
-    settingsFormContainer.style.bottom = '10px';
-    settingsFormContainer.style.right = '10px';
-    settingsFormContainer.style.padding = '10px';
-    settingsFormContainer.style.backgroundColor = '#f0f0f0';
-    settingsFormContainer.style.border = '1px solid #ccc';
+    settingsFormContainer.style.position = "fixed";
+    settingsFormContainer.style.bottom = "10px";
+    settingsFormContainer.style.right = "10px";
+    settingsFormContainer.style.padding = "10px";
+    settingsFormContainer.style.backgroundColor = "#f0f0f0";
+    settingsFormContainer.style.border = "1px solid #ccc";
   }
 
   function updateSettings() {
-    const minPrice = document.getElementById('minPrice').value;
-    const maxPrice = document.getElementById('maxPrice').value;
-    const amount = parseInt(document.getElementById('amount').value);
+    const minPrice = document.getElementById("minPrice").value;
+    const maxPrice = document.getElementById("maxPrice").value;
+    const amount = parseInt(document.getElementById("amount").value);
 
-    settings.minPrice = minPrice !== '' ? minPrice : null;
-    settings.maxPrice = maxPrice !== '' ? maxPrice : null;
-    settings.amount = amount !== '' ? amount : null;
+    settings.minPrice = minPrice !== "" ? minPrice : null;
+    settings.maxPrice = maxPrice !== "" ? maxPrice : null;
+    settings.amount = amount !== "" ? amount : null;
 
     if (settings.isMadridista) {
       settings.madridista = {
-        login: document.getElementById('login').value,
-        password: document.getElementById('password').value,
+        login: document.getElementById("login").value,
+        password: document.getElementById("password").value,
       };
     }
-    
-    const selectedRadio = document.querySelector('input[name="viewOption"]:checked');
+
+    const selectedRadio = document.querySelector(
+      'input[name="viewOption"]:checked'
+    );
     settings.radio = selectedRadio ? selectedRadio.value : null;
 
-    settings.selection = parseInt(document.getElementById('selection').value);
+    settings.selection = parseInt(document.getElementById("selection").value);
     window.stopExecutionFlag = undefined;
     saveSettings(); // Save the updated settings to IndexedDB
   }
@@ -285,8 +294,8 @@ window.onload = () => {
 
     transaction.oncomplete = function () {
       console.log("Settings updated in IndexedDB.");
-      const backToMap = document.querySelector('a[id="backToMap1"]')
-      if (backToMap) backToMap.click()
+      const backToMap = document.querySelector('a[id="backToMap1"]');
+      if (backToMap) backToMap.click();
     };
 
     transaction.onerror = function () {
@@ -295,28 +304,28 @@ window.onload = () => {
   }
 
   function sectorsPicker() {
-    const overlayElement = document.createElement('div');
-    overlayElement.className = 'overlay';
-    overlayElement.style.width = '100%';
-    overlayElement.style.height = '100%';
-    overlayElement.style.position = 'fixed';
-    overlayElement.style.top = '0';
-    overlayElement.style.display = 'flex';
-    overlayElement.style.justifyContent = 'center';
-    overlayElement.style.alignItems = 'center';
-    overlayElement.style.left = '0';
-    overlayElement.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-    overlayElement.style.zIndex = '1000';
+    const overlayElement = document.createElement("div");
+    overlayElement.className = "overlay";
+    overlayElement.style.width = "100%";
+    overlayElement.style.height = "100%";
+    overlayElement.style.position = "fixed";
+    overlayElement.style.top = "0";
+    overlayElement.style.display = "flex";
+    overlayElement.style.justifyContent = "center";
+    overlayElement.style.alignItems = "center";
+    overlayElement.style.left = "0";
+    overlayElement.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
+    overlayElement.style.zIndex = "1000";
 
     // Create a content container inside the overlay
-    const contentContainer = document.createElement('div');
-    contentContainer.className = 'content';
-    contentContainer.style.width = '95vw';
-    contentContainer.style.height = '95vh';
-    contentContainer.style.backgroundColor = '#fff';
-    contentContainer.style.borderRadius = '8px';
-    contentContainer.style.padding = '20px';
-    contentContainer.style.position = 'relative';
+    const contentContainer = document.createElement("div");
+    contentContainer.className = "content";
+    contentContainer.style.width = "95vw";
+    contentContainer.style.height = "95vh";
+    contentContainer.style.backgroundColor = "#fff";
+    contentContainer.style.borderRadius = "8px";
+    contentContainer.style.padding = "20px";
+    contentContainer.style.position = "relative";
 
     // Append content container to overlay
     overlayElement.appendChild(contentContainer);
@@ -340,182 +349,217 @@ window.onload = () => {
 
     // When the image loads, draw it on the canvas
     img.onload = () => {
-        // Adjust width/height if necessary; here it's fit to canvas size
-        context.drawImage(img, 0, 0, canvas.width, canvas.height);
+      // Adjust width/height if necessary; here it's fit to canvas size
+      context.drawImage(img, 0, 0, canvas.width, canvas.height);
     };
 
     // Add a click event listener on the overlay to remove it when clicked
-    overlayElement.addEventListener('click', () => {
-        document.body.removeChild(overlayElement);
+    overlayElement.addEventListener("click", () => {
+      document.body.removeChild(overlayElement);
     });
 
     // Prevent clicks inside the content container from closing the overlay
-    contentContainer.addEventListener('click', (event) => {
-        event.stopPropagation();
+    contentContainer.addEventListener("click", (event) => {
+      event.stopPropagation();
     });
-}
+  }
 
+  function main() {
+    console.log("calling call");
+    const request = indexedDB.open("TicketBotDB", 1);
+    request.onsuccess = function (event) {
+      const db = event.target.result;
+      console.log(db.objectStoreNames);
+      if (!db.objectStoreNames.contains("settings")) {
+        console.log("Object store does not exist - fresh database");
 
-function main() {
-  console.log('calling call')
-  const request = indexedDB.open("TicketBotDB", 1);
-  request.onsuccess = function(event) {
+        return;
+      }
 
-    const db = event.target.result;
-    console.log(db.objectStoreNames)
-    if (!db.objectStoreNames.contains('settings')) {
-      console.log('Object store does not exist - fresh database');
-      
-      return;
-    }
+      const transaction = db.transaction("settings", "readonly");
+      const objectStore = transaction.objectStore("settings");
 
-    const transaction = db.transaction('settings', 'readonly');
-    const objectStore = transaction.objectStore('settings');
-    
-    // Check if there are any entries in the object store
-    const countRequest = objectStore.count();
-    
-    countRequest.onsuccess = function() {
-      
-      if (countRequest.result > 0) {
-        console.log('Data exists in the database');
+      // Check if there are any entries in the object store
+      const countRequest = objectStore.count();
 
+      countRequest.onsuccess = function () {
+        if (countRequest.result > 0) {
+          console.log("Data exists in the database");
 
-        // Configuration
-        const subsecciones = {
-          "Lateral Este": "sub-padredamian",
-          "Fondo Norte": "sub-rafaelsalgado",
-          "Lateral Oeste": "sub-castellana",
-          "Fondo Sur": "sub-conchaespina",
-        };
+          // Configuration
+          const subsecciones = {
+            "Lateral Este": "sub-padredamian",
+            "Fondo Norte": "sub-rafaelsalgado",
+            "Lateral Oeste": "sub-castellana",
+            "Fondo Sur": "sub-conchaespina",
+          };
 
-        const ar = settings.radio;
-        const ent = settings.amount;
-        const maxprc = settings.maxPrice;
-        const minprc = settings.minPrice;
+          const ar = settings.radio;
+          const ent = settings.amount;
+          const maxprc = settings.maxPrice;
+          const minprc = settings.minPrice;
 
-        // Determine sector selector
-        let sectors;
-        switch (ar.toLowerCase()) {
-          case "l":
-            sectors = "g[data-name^='Lateral'][class='sector']";
-            break;
-          case "f":
-            sectors = "g[data-name^='Fondo'][class='sector']";
-            break;
-          default:
-            sectors = "g[data-name][class='sector']";
-        }
+          // Determine sector selector
+          let sectors;
+          switch (ar.toLowerCase()) {
+            case "l":
+              sectors = "g[data-name^='Lateral'][class='sector']";
+              break;
+            case "f":
+              sectors = "g[data-name^='Fondo'][class='sector']";
+              break;
+            default:
+              sectors = "g[data-name][class='sector']";
+          }
 
-        // Make AJAX request
-        // Updated main code using async/await
-        if (captcha_token) {
-          const xhr = new XMLHttpRequest();
-          xhr.open(
+          // Make AJAX request
+          // Updated main code using async/await
+          if (captcha_token) {
+            const xhr = new XMLHttpRequest();
+            xhr.open(
               "GET",
               `https://deportes.entradas.com/sports-web/map/svg/rma/${sessionId}/1?`,
               true
-          );
-          
-          xhr.onreadystatechange = async function () {
+            );
+
+            xhr.onreadystatechange = async function () {
               if (xhr.readyState === 4 && xhr.status === 200) {
-                  try {
-                      const suitableZones = processResponse(xhr.responseText);
-                      if (suitableZones.length === 0) return;
-                      if (!captcha_token) return;
-                      // Validate captcha first
-                      // const validationResponse = await sendFormDataRequest({
-                      //     url: `https://deportes.entradas.com/sports-web/validateCapcha`,
-                      //     payload: { 'captcha': captcha_token, 'action': 'prebook'}
-                      // });
-
-                      
-                      // Process zones after successful validation
-                      await Promise.all(suitableZones.map(async (zone) => {
-                          try {
-                              const prebookResponse = await sendFormDataRequest({
-                                  url: 'https://deportes.entradas.com/sports-web/prebook',
-                                  payload: { 
-                                      'seats': ent, 
-                                      'sessionId': Number(sessionId), 
-                                      'teamUcc': 'RMA', 
-                                      'zoneId': zone
-                                  },
-                              });
-                              console.log('Prebook success for zone', zone, prebookResponse);
-                          } catch (error) {
-                              console.error('Prebook failed for zone', zone, error);
-                          }
-                      }));
-                      
-                  } catch (error) {
-                      console.error('Error in processing flow:', error);
-                  }
+                try {
+                  const suitableZones = processResponse(xhr.responseText);
+                  if (suitableZones.length === 0) return;
+                  // if (!captcha_token || !data_sitekey) return;
+                  // Validate captcha first
+                  console.log("before chrome.runtime");
+                  chrome.runtime.sendMessage(
+                    {
+                      action: "resolve-captcha",
+                      content: data_sitekey,
+                    },
+                    (response) => {
+                      if (response?.transcription) {
+                        console.log(
+                          "Transcription result:",
+                          response.transcription
+                        );
+                      } else if (response?.error) {
+                        console.error("Error:", response.error);
+                      } else {
+                        console.error(
+                          "No response received from background.js"
+                        );
+                      }
+                    }
+                  );
+                  console.log("after runtime");
+                  return;
+                  const validationResponse = await sendFormDataRequest({
+                    url: `https://deportes.entradas.com/sports-web/validateCapcha`,
+                    payload: { captcha: captcha_token, action: "prebook" },
+                  });
+                  if (validationResponse.response === false) return;
+                  // Process zones after successful validation
+                  await Promise.all(
+                    suitableZones.map(async (zone) => {
+                      try {
+                        const prebookResponse = await sendFormDataRequest({
+                          url: "https://deportes.entradas.com/sports-web/prebook",
+                          payload: {
+                            seats: ent,
+                            sessionId: Number(sessionId),
+                            teamUcc: "RMA",
+                            zoneId: zone,
+                          },
+                        });
+                        console.log(
+                          "Prebook success for zone",
+                          zone,
+                          prebookResponse
+                        );
+                      } catch (error) {
+                        console.error("Prebook failed for zone", zone, error);
+                      }
+                    })
+                  );
+                } catch (error) {
+                  console.error("Error in processing flow:", error);
+                }
               }
-          };
-          xhr.send();
+            };
+            xhr.send();
 
-  
-  
-          function processResponse(xmlText) {
-            const parser = new DOMParser();
-            const xmlDoc = parser.parseFromString(xmlText, "application/xml");
-          
-            // Find available areas
-            const availableAreas = xmlDoc.querySelectorAll(sectors);
-            let randomArea = null;
-          
-            if (availableAreas.length > 0) {
-              const randomIndex = Math.floor(Math.random() * availableAreas.length);
-              randomArea = availableAreas[randomIndex].getAttribute("data-name");
-            }
-          
-            // Check subsecciones
-            if (randomArea && subsecciones[randomArea]) {
-              const subseccion = xmlDoc.getElementById(subsecciones[randomArea]);
-              const hasChildren = subseccion && subseccion.children.length > 0;
-              console.log("Subsection status:", hasChildren ? "Has seats" : "No seats");
-            }
-          
-            // Find suitable zones
-            const suitableZones = [];
-            const zones = xmlDoc.querySelectorAll("path[data-available-seats]");
-          
-            zones.forEach((zone) => {
-              const seats = parseInt(zone.getAttribute("data-available-seats"), 10);
-              const minPrice = parseInt(zone.getAttribute("data-min-price"), 10);
-          
-              if (seats >= ent && minPrice >= minprc && minPrice <= maxprc) {
-                suitableZones.push(zone.getAttribute("data-internal-id"));
+            function processResponse(xmlText) {
+              const parser = new DOMParser();
+              const xmlDoc = parser.parseFromString(xmlText, "application/xml");
+
+              // Find available areas
+              const availableAreas = xmlDoc.querySelectorAll(sectors);
+              let randomArea = null;
+
+              if (availableAreas.length > 0) {
+                const randomIndex = Math.floor(
+                  Math.random() * availableAreas.length
+                );
+                randomArea =
+                  availableAreas[randomIndex].getAttribute("data-name");
               }
-            });
-          
-            console.log("Suitable zones:", suitableZones);
-            return suitableZones;
+
+              // Check subsecciones
+              if (randomArea && subsecciones[randomArea]) {
+                const subseccion = xmlDoc.getElementById(
+                  subsecciones[randomArea]
+                );
+                const hasChildren =
+                  subseccion && subseccion.children.length > 0;
+                console.log(
+                  "Subsection status:",
+                  hasChildren ? "Has seats" : "No seats"
+                );
+              }
+
+              // Find suitable zones
+              const suitableZones = [];
+              const zones = xmlDoc.querySelectorAll(
+                "path[data-available-seats]"
+              );
+
+              zones.forEach((zone) => {
+                const seats = parseInt(
+                  zone.getAttribute("data-available-seats"),
+                  10
+                );
+                const minPrice = parseInt(
+                  zone.getAttribute("data-min-price"),
+                  10
+                );
+
+                if (seats >= ent && minPrice >= minprc && minPrice <= maxprc) {
+                  suitableZones.push(zone.getAttribute("data-internal-id"));
+                }
+              });
+
+              console.log("Suitable zones:", suitableZones);
+              return suitableZones;
+            }
           }
         }
-        }
-        
-    };
-  
-    countRequest.onerror = function(error) {
-      console.error('Error counting records:', error);
-    };
-  };
-  
-}
+      };
 
+      countRequest.onerror = function (error) {
+        console.error("Error counting records:", error);
+      };
+    };
+  }
 };
 function sendFormDataRequest(options) {
   // Default options with proper headers (including Priority)
   const defaults = {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'X-Requested-With': 'XMLHttpRequest',
-      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-      'Priority': 'u=0, i'
+      "X-Requested-With": "XMLHttpRequest",
+      "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+      Priority: "u=0, i",
     },
-    credentials: 'same-origin'
+    credentials: "same-origin",
   };
 
   // Merge defaults with options – ensuring headers are merged deeply.
@@ -524,8 +568,8 @@ function sendFormDataRequest(options) {
     ...options,
     headers: {
       ...defaults.headers,
-      ...(options.headers || {})
-    }
+      ...(options.headers || {}),
+    },
   };
 
   // Create URL-encoded string from payload data.
@@ -533,7 +577,7 @@ function sendFormDataRequest(options) {
   if (config.payload) {
     Object.entries(config.payload).forEach(([key, value]) => {
       if (Array.isArray(value)) {
-        value.forEach(item => params.append(`${key}[]`, item));
+        value.forEach((item) => params.append(`${key}[]`, item));
       } else {
         params.append(key, value);
       }
@@ -544,42 +588,41 @@ function sendFormDataRequest(options) {
     method: config.method,
     headers: config.headers,
     body: params.toString(),
-    credentials: config.credentials
+    credentials: config.credentials,
   })
-  .then(async response => {
-    // Retrieve the text and try to parse as JSON.
-    const text = await response.text();
-    let data;
-    try {
-      data = text ? JSON.parse(text) : {};
-    } catch (e) {
-      data = text;
-    }
+    .then(async (response) => {
+      // Retrieve the text and try to parse as JSON.
+      const text = await response.text();
+      let data;
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch (e) {
+        data = text;
+      }
 
-    // If the parsed data isn’t an object, wrap it in one.
-    if (typeof data !== 'object' || data === null) {
-      data = { response: data };
-    }
+      // If the parsed data isn’t an object, wrap it in one.
+      if (typeof data !== "object" || data === null) {
+        data = { response: data };
+      }
 
-    if (!response.ok) {
-      const error = new Error(`HTTP error! status: ${response.status}`);
-      error.response = data;
+      if (!response.ok) {
+        const error = new Error(`HTTP error! status: ${response.status}`);
+        error.response = data;
+        throw error;
+      }
+
+      return data;
+    })
+    .catch((error) => {
+      console.error("Request failed:", error);
       throw error;
-    }
-
-    return data;
-  })
-  .catch(error => {
-    console.error('Request failed:', error);
-    throw error;
-  });
+    });
 }
 
-
 async function receive_sheets_data(input) {
-  let SHEET_ID = '1mV47WiX2F0hkzRr5m9MMVXFF3fg95AjCy-qa82Bl3T8';
-  let SHEET_TITLE = 'main';
-  let SHEET_RANGE = 'A2:O';
+  let SHEET_ID = "1mV47WiX2F0hkzRr5m9MMVXFF3fg95AjCy-qa82Bl3T8";
+  let SHEET_TITLE = "main";
+  let SHEET_RANGE = "A2:O";
 
   let FULL_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${SHEET_TITLE}&range=${SHEET_RANGE}`;
 
@@ -603,7 +646,7 @@ async function receive_sheets_data(input) {
     });
     console.log(filtered_data);
     if (filtered_data.length === 0) {
-      alert('Не владося знайти введену пошту');
+      alert("Не владося знайти введену пошту");
       return null;
     }
     let random_row = filtered_data[0].c;
@@ -647,41 +690,40 @@ async function receive_sheets_data(input) {
       attendants: attendants,
     };
   } catch (error) {
-    console.error('Error fetching data:', error);
+    console.error("Error fetching data:", error);
     return null;
   }
 }
 
-
 (function () {
   // Create autofill button
-  const button = document.createElement('button');
-  button.textContent = 'Fill Data';
+  const button = document.createElement("button");
+  button.textContent = "Fill Data";
 
   // Apply styles to the button
-  button.style.backgroundColor = '#007bff';
-  button.style.color = 'white';
-  button.style.border = 'none';
-  button.style.padding = '5px 10px';
-  button.style.borderRadius = '5px';
-  button.style.fontSize = '16px';
-  button.style.cursor = 'pointer';
-  button.style.transform = 'rotate(90deg)';
-  button.style.position = 'absolute';
-  button.style.top = '50%';
-  button.style.left = '-25px';
-  button.style.zIndex = '9999';
-  button.style.transform = 'translateY(-50%) rotate(90deg)';
+  button.style.backgroundColor = "#007bff";
+  button.style.color = "white";
+  button.style.border = "none";
+  button.style.padding = "5px 10px";
+  button.style.borderRadius = "5px";
+  button.style.fontSize = "16px";
+  button.style.cursor = "pointer";
+  button.style.transform = "rotate(90deg)";
+  button.style.position = "absolute";
+  button.style.top = "50%";
+  button.style.left = "-25px";
+  button.style.zIndex = "9999";
+  button.style.transform = "translateY(-50%) rotate(90deg)";
 
   // Apply positioning styles to the body
-  document.body.style.margin = '0';
-  document.body.style.height = '100vh';
-  document.body.style.position = 'relative';
-  document.body.style.backgroundColor = '#f0f0f0';
+  document.body.style.margin = "0";
+  document.body.style.height = "100vh";
+  document.body.style.position = "relative";
+  document.body.style.backgroundColor = "#f0f0f0";
 
   // Add click event listener
-  button.addEventListener('click', function () {
-    const alertData = prompt('Ввведіть необхідну пошту');
+  button.addEventListener("click", function () {
+    const alertData = prompt("Ввведіть необхідну пошту");
     fill_data(alertData);
   });
 
@@ -691,8 +733,10 @@ async function receive_sheets_data(input) {
 
 async function fill_data(alertData) {
   setTimeout(() => {
-    const summary = document.querySelector('div[id="nominative-tickets-container"]');
-    
+    const summary = document.querySelector(
+      'div[id="nominative-tickets-container"]'
+    );
+
     if (summary) {
       receive_sheets_data(alertData).then((data) => {
         if (!data) {
@@ -722,21 +766,21 @@ async function fill_data(alertData) {
               attendantSurnameInputs[i],
               attendantIdInputs[i],
             ].forEach((input) => {
-              input.dispatchEvent(new Event('input', { bubbles: true }));
+              input.dispatchEvent(new Event("input", { bubbles: true }));
             });
           }
         }
 
-        const continueButton = document.querySelector('a[id="boton-payment-data"]')
-        continueButton.click()
+        const continueButton = document.querySelector(
+          'a[id="boton-payment-data"]'
+        );
+        continueButton.click();
 
-        const firstNameInput = document.querySelector('input[id="firstname"]')
-        const lastNameInput = document.querySelector('input[id="lastname"]')
+        const firstNameInput = document.querySelector('input[id="firstname"]');
+        const lastNameInput = document.querySelector('input[id="lastname"]');
 
         const emailInput = document.querySelector('input[id="email"]');
-        const emailCheckInput = document.querySelector(
-          'input[id="reemail"]'
-        );
+        const emailCheckInput = document.querySelector('input[id="reemail"]');
         const telephoneInput = document.querySelector(
           'input[id="phonenumber"]'
         );
@@ -761,13 +805,13 @@ async function fill_data(alertData) {
           telephoneInput,
           postalCodeInput,
         ].forEach((input) => {
-          input.dispatchEvent(new Event('input', { bubbles: true }));
+          input.dispatchEvent(new Event("input", { bubbles: true }));
         });
 
         // const selectCountryCode = document.querySelector('select[name="countryCode"]')
 
         // selectCountryCode.options[1].selected = true
-        
+
         // const changeEvent = new Event('change', { bubbles: true });
         // selectCountryCode.dispatchEvent(changeEvent)
 
@@ -786,23 +830,26 @@ async function fill_data(alertData) {
         if (!channelAgreementCheckbox.checked) {
           channelAgreementCheckbox.click();
         }
-
       });
     }
   }, 2000);
 }
 
-
 function handleCaptchaReceive(callback) {
-  const selector = '#recaptcha-prebook > div > div.grecaptcha-logo > iframe';
+  const selector = "#recaptcha-prebook > div > div.grecaptcha-logo > iframe";
   let iframe = document.querySelector(selector);
 
   if (iframe) {
     // Iframe already exists, check if loaded
-    if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
+    if (
+      iframe.contentDocument &&
+      iframe.contentDocument.readyState === "complete"
+    ) {
       callback(iframe.contentDocument);
     } else {
-      iframe.addEventListener('load', () => callback(iframe.contentDocument), { once: true });
+      iframe.addEventListener("load", () => callback(iframe.contentDocument), {
+        once: true,
+      });
     }
   } else {
     // Observe DOM for iframe addition
@@ -810,9 +857,16 @@ function handleCaptchaReceive(callback) {
       iframe = document.querySelector(selector);
       if (iframe) {
         obs.disconnect();
-        iframe.addEventListener('load', () => callback(iframe.contentDocument), { once: true });
+        iframe.addEventListener(
+          "load",
+          () => callback(iframe.contentDocument),
+          { once: true }
+        );
         // Check if already loaded when found
-        if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') {
+        if (
+          iframe.contentDocument &&
+          iframe.contentDocument.readyState === "complete"
+        ) {
           callback(iframe.contentDocument);
         }
       }
@@ -822,10 +876,9 @@ function handleCaptchaReceive(callback) {
   }
 }
 
-function httpGet(theUrl)
-{
-    var xmlHttp = new XMLHttpRequest();
-    xmlHttp.open( "GET", theUrl, false ); // false for synchronous request
-    xmlHttp.send( null );
-    return xmlHttp.responseText;
+function httpGet(theUrl) {
+  var xmlHttp = new XMLHttpRequest();
+  xmlHttp.open("GET", theUrl, false); // false for synchronous request
+  xmlHttp.send(null);
+  return xmlHttp.responseText;
 }

@@ -1,1 +1,0 @@
-!function(){let o=document.querySelector('iframe[title="reCAPTCHA"][width="304"][height="78"]');console.log(o),o.onload=function(){const n=o.contentDocument||o.contentWindow.document;console.log(n)}}();
