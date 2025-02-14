@@ -3,7 +3,10 @@
   "name": "Entradas Bot",
   "version": "1.0",
   "description": "Entradas Bot Configuration",
-  "service_worker": "dist/bundle.js",
+  "background": {
+    "service_worker": "dist/bundle.js"
+  },
+  
   "content_scripts": [
     {
       "matches": ["*://*.entradas.com/*", "https://www.google.com/"],

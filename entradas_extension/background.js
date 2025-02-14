@@ -1,10 +1,11 @@
-const TwoCaptcha = require("../dist/index.js");
+const TwoCaptcha = require("@2captcha/captcha-solver")
 const solver = new TwoCaptcha.Solver("ab8431ca9bda62c92650bc4040ba1754");
 
 // Listen for a request from content.js
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log("received in background.js", sender.tab.url, request.content);
   if (request.action === "resolve-captcha") {
-    console.log("received in background.js");
+    
     // Ensure request includes required fields
     if (!request.content) {
       sendResponse({ error: "Content is missing" });
@@ -13,15 +14,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     solver
       .recaptcha({
-        pageurl: "https://2captcha.com/demo/recaptcha-v2",
+        pageurl: sender.tab.url,
         googlekey: request.content,
       })
       .then((res) => {
         console.log(res);
-        return res.code;
+        sendResponse({ transcription: res.data });
       })
       .catch((err) => {
         console.log(err);
+        sendResponse({ error: "Transcription failed" });
       });
 
     return true; // Keeps the message channel open for the async response

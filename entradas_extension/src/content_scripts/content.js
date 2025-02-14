@@ -8,17 +8,20 @@ window.onload = () => {
     madridista: { login: "222222", password: "2222222" } && null,
     radio: null,
     selection: 1,
+    captcha_token: null,
+    captcha_required: false,
+    finished: false,
+    timesToBrowserTabReload: 200,
+    secondsToRestartIfNoTicketsFound: 10
   };
 
-  let captcha_token = null;
   let data_sitekey = null;
   handleCaptchaReceive(function (doc) {
     if (doc.querySelector("#recaptcha-token")?.value) {
-      captcha_token = doc.querySelector("#recaptcha-token").value;
       data_sitekey = document
         .querySelector("div[data-sitekey]")
         .getAttribute("data-sitekey");
-      console.log(captcha_token, data_sitekey);
+      console.log(data_sitekey);
       main();
     }
   });
@@ -236,14 +239,6 @@ window.onload = () => {
       settings.isMadridista = isChecked;
     });
 
-    const chooseSectorsButton = document.createElement("button");
-    chooseSectorsButton.type = "button";
-    chooseSectorsButton.textContent = "Choose sectors";
-    chooseSectorsButton.addEventListener("click", sectorsPicker);
-    chooseSectorsButton.style.width = "50%";
-    chooseSectorsButton.style.marginBottom = "5px";
-    form.appendChild(chooseSectorsButton);
-
     const updateButton = document.createElement("button");
     updateButton.type = "button";
     updateButton.textContent = "Update Settings and Reload";
@@ -260,6 +255,9 @@ window.onload = () => {
     settingsFormContainer.style.border = "1px solid #ccc";
   }
 
+
+
+ /* Database logic */
   function updateSettings() {
     const minPrice = document.getElementById("minPrice").value;
     const maxPrice = document.getElementById("maxPrice").value;
@@ -283,6 +281,7 @@ window.onload = () => {
 
     settings.selection = parseInt(document.getElementById("selection").value);
     window.stopExecutionFlag = undefined;
+    settings.finished = false;
     saveSettings(); // Save the updated settings to IndexedDB
   }
 
@@ -303,253 +302,375 @@ window.onload = () => {
     };
   }
 
-  function sectorsPicker() {
-    const overlayElement = document.createElement("div");
-    overlayElement.className = "overlay";
-    overlayElement.style.width = "100%";
-    overlayElement.style.height = "100%";
-    overlayElement.style.position = "fixed";
-    overlayElement.style.top = "0";
-    overlayElement.style.display = "flex";
-    overlayElement.style.justifyContent = "center";
-    overlayElement.style.alignItems = "center";
-    overlayElement.style.left = "0";
-    overlayElement.style.backgroundColor = "rgba(0, 0, 0, 0.5)";
-    overlayElement.style.zIndex = "1000";
 
-    // Create a content container inside the overlay
-    const contentContainer = document.createElement("div");
-    contentContainer.className = "content";
-    contentContainer.style.width = "95vw";
-    contentContainer.style.height = "95vh";
-    contentContainer.style.backgroundColor = "#fff";
-    contentContainer.style.borderRadius = "8px";
-    contentContainer.style.padding = "20px";
-    contentContainer.style.position = "relative";
-
-    // Append content container to overlay
-    overlayElement.appendChild(contentContainer);
-
-    // Append the overlay to the document body
-    document.body.appendChild(overlayElement);
-
-    // Create a canvas element
-    const canvas = document.createElement("canvas");
-    canvas.width = contentContainer.clientWidth; // Set canvas width
-    canvas.height = contentContainer.clientHeight; // Set canvas height
-    canvas.style.width = "100%";
-    canvas.style.height = "100%";
-    canvas.style.borderRadius = "8px";
-    contentContainer.appendChild(canvas);
-
-    // Draw image onto canvas
-    const context = canvas.getContext("2d");
-    const img = new Image();
-    img.src = chrome.runtime.getURL("src/images/stadium.png"); // Load image from extension
-
-    // When the image loads, draw it on the canvas
-    img.onload = () => {
-      // Adjust width/height if necessary; here it's fit to canvas size
-      context.drawImage(img, 0, 0, canvas.width, canvas.height);
-    };
-
-    // Add a click event listener on the overlay to remove it when clicked
-    overlayElement.addEventListener("click", () => {
-      document.body.removeChild(overlayElement);
-    });
-
-    // Prevent clicks inside the content container from closing the overlay
-    contentContainer.addEventListener("click", (event) => {
-      event.stopPropagation();
-    });
-  }
-
-  function main() {
-    console.log("calling call");
-    const request = indexedDB.open("TicketBotDB", 1);
-    request.onsuccess = function (event) {
-      const db = event.target.result;
-      console.log(db.objectStoreNames);
+  async function main() {
+    console.log("Starting main()");
+  
+    // Exit early if reservations are already finished.
+    if (settings.finished) {
+      alert("Seats already reserved! Please delete them to start new search!");
+      return;
+    }
+  
+    // Open IndexedDB and check if settings exist.
+    try {
+      const db = await openDatabase("TicketBotDB", 1);
       if (!db.objectStoreNames.contains("settings")) {
-        console.log("Object store does not exist - fresh database");
-
+        console.log("Object store 'settings' does not exist – fresh database");
         return;
       }
-
-      const transaction = db.transaction("settings", "readonly");
-      const objectStore = transaction.objectStore("settings");
-
-      // Check if there are any entries in the object store
-      const countRequest = objectStore.count();
-
-      countRequest.onsuccess = function () {
-        if (countRequest.result > 0) {
-          console.log("Data exists in the database");
-
-          // Configuration
-          const subsecciones = {
-            "Lateral Este": "sub-padredamian",
-            "Fondo Norte": "sub-rafaelsalgado",
-            "Lateral Oeste": "sub-castellana",
-            "Fondo Sur": "sub-conchaespina",
-          };
-
-          const ar = settings.radio;
-          const ent = settings.amount;
-          const maxprc = settings.maxPrice;
-          const minprc = settings.minPrice;
-
-          // Determine sector selector
-          let sectors;
-          switch (ar.toLowerCase()) {
-            case "l":
-              sectors = "g[data-name^='Lateral'][class='sector']";
-              break;
-            case "f":
-              sectors = "g[data-name^='Fondo'][class='sector']";
-              break;
-            default:
-              sectors = "g[data-name][class='sector']";
-          }
-
-          // Make AJAX request
-          // Updated main code using async/await
-          if (captcha_token) {
-            const xhr = new XMLHttpRequest();
-            xhr.open(
-              "GET",
-              `https://deportes.entradas.com/sports-web/map/svg/rma/${sessionId}/1?`,
-              true
-            );
-
-            xhr.onreadystatechange = async function () {
-              if (xhr.readyState === 4 && xhr.status === 200) {
-                try {
-                  const suitableZones = processResponse(xhr.responseText);
-                  if (suitableZones.length === 0) return;
-                  // if (!captcha_token || !data_sitekey) return;
-                  // Validate captcha first
-                  console.log("before chrome.runtime");
-                  chrome.runtime.sendMessage(
-                    {
-                      action: "resolve-captcha",
-                      content: data_sitekey,
-                    },
-                    (response) => {
-                      if (response?.transcription) {
-                        console.log(
-                          "Transcription result:",
-                          response.transcription
-                        );
-                      } else if (response?.error) {
-                        console.error("Error:", response.error);
-                      } else {
-                        console.error(
-                          "No response received from background.js"
-                        );
-                      }
-                    }
-                  );
-                  console.log("after runtime");
-                  return;
-                  const validationResponse = await sendFormDataRequest({
-                    url: `https://deportes.entradas.com/sports-web/validateCapcha`,
-                    payload: { captcha: captcha_token, action: "prebook" },
-                  });
-                  if (validationResponse.response === false) return;
-                  // Process zones after successful validation
-                  await Promise.all(
-                    suitableZones.map(async (zone) => {
-                      try {
-                        const prebookResponse = await sendFormDataRequest({
-                          url: "https://deportes.entradas.com/sports-web/prebook",
-                          payload: {
-                            seats: ent,
-                            sessionId: Number(sessionId),
-                            teamUcc: "RMA",
-                            zoneId: zone,
-                          },
-                        });
-                        console.log(
-                          "Prebook success for zone",
-                          zone,
-                          prebookResponse
-                        );
-                      } catch (error) {
-                        console.error("Prebook failed for zone", zone, error);
-                      }
-                    })
-                  );
-                } catch (error) {
-                  console.error("Error in processing flow:", error);
-                }
-              }
-            };
-            xhr.send();
-
-            function processResponse(xmlText) {
-              const parser = new DOMParser();
-              const xmlDoc = parser.parseFromString(xmlText, "application/xml");
-
-              // Find available areas
-              const availableAreas = xmlDoc.querySelectorAll(sectors);
-              let randomArea = null;
-
-              if (availableAreas.length > 0) {
-                const randomIndex = Math.floor(
-                  Math.random() * availableAreas.length
-                );
-                randomArea =
-                  availableAreas[randomIndex].getAttribute("data-name");
-              }
-
-              // Check subsecciones
-              if (randomArea && subsecciones[randomArea]) {
-                const subseccion = xmlDoc.getElementById(
-                  subsecciones[randomArea]
-                );
-                const hasChildren =
-                  subseccion && subseccion.children.length > 0;
-                console.log(
-                  "Subsection status:",
-                  hasChildren ? "Has seats" : "No seats"
-                );
-              }
-
-              // Find suitable zones
-              const suitableZones = [];
-              const zones = xmlDoc.querySelectorAll(
-                "path[data-available-seats]"
-              );
-
-              zones.forEach((zone) => {
-                const seats = parseInt(
-                  zone.getAttribute("data-available-seats"),
-                  10
-                );
-                const minPrice = parseInt(
-                  zone.getAttribute("data-min-price"),
-                  10
-                );
-
-                if (seats >= ent && minPrice >= minprc && minPrice <= maxprc) {
-                  suitableZones.push(zone.getAttribute("data-internal-id"));
-                }
-              });
-
-              console.log("Suitable zones:", suitableZones);
-              return suitableZones;
-            }
-          }
+      const settingsCount = await countObjectStore(db, "settings");
+      if (settingsCount === 0) {
+        console.log("No settings in database.");
+        return;
+      }
+    } catch (error) {
+      console.error("Error accessing IndexedDB:", error);
+      _countAndRun();
+      return;
+    }
+  
+    // Extract configuration values from settings.
+    const { radio: ar, amount: ent, maxPrice: maxprc, minPrice: minprc } = settings;
+    const subsecciones = {
+      "Lateral Este": "sub-padredamian",
+      "Fondo Norte": "sub-rafaelsalgado",
+      "Lateral Oeste": "sub-castellana",
+      "Fondo Sur": "sub-conchaespina",
+    };
+  
+    // Determine the CSS selector for sectors.
+    let sectors;
+    switch (ar.toLowerCase()) {
+      case "l":
+        sectors = "g[data-name^='Lateral'][class='sector']";
+        break;
+      case "f":
+        sectors = "g[data-name^='Fondo'][class='sector']";
+        break;
+      default:
+        sectors = "g[data-name][class='sector']";
+    }
+  
+    try {
+      const mapUrl = `https://deportes.entradas.com/sports-web/map/svg/rma/${sessionId}/1?`;
+      const mapResponse = await fetch(mapUrl);
+      const mapText = await mapResponse.text();
+  
+      await handleCaptchaIfNeeded();
+  
+      // Process the XML response to determine suitable zones.
+      const suitableZones = processResponse(mapText, sectors, ent, minprc, maxprc, subsecciones);
+      if (!suitableZones.length) {
+        console.log("No suitable zones found.");
+        _countAndRun();
+        return;
+      }
+  
+      // Prebook each suitable zone concurrently.
+      const successfulZones = await Promise.all(
+        suitableZones.map(zoneId => prebookZone(zoneId, ent))
+      );
+      // Filter out unsuccessful prebook responses.
+      const validZones = successfulZones.filter(item => item !== null);
+      if (!validZones.length) {
+        console.log("No zones were successfully prebooked.");
+        _countAndRun();
+        return;
+      }
+  
+      // Prepare cart POST data.
+      const cart_post = {
+        numTickets: ent,
+        sectorData: {
+          sectorName: "",
+          availableSeats: "",
+          availableVipSeats: "",
+          minPrice: "1500"
+        },
+        vipZone: true,
+        zoneData: {
+          zoneId: "",
+          zoneName: "",
+          sector: "",
+          defaultPrice: "",
+          abbreviatedZoneCode: ""
         }
       };
-
-      countRequest.onerror = function (error) {
-        console.error("Error counting records:", error);
-      };
-    };
+  
+      // Use the first valid zone for cart submission.
+      const [prebookResponse, zoneId] = validZones[0];
+  
+      // Build URLSearchParams payload.
+      const params = new URLSearchParams();
+      params.append("bookingLocator", "");
+      params.append("sessionId", Number(sessionId));
+      params.append("teamUcc", "RMA");
+      params.append("zoneId", zoneId);
+      params.append("trackerBooking", JSON.stringify(cart_post));
+  
+      // Append each seatId from the prebook response.
+      prebookResponse.content.passSeats.forEach(passSeat => {
+        params.append("seatId", `${passSeat.id}:${sessionId}`);
+      });
+      console.log("FINAL PAYLOAD:", params.toString());
+  
+      // Populate the hidden inputs on the form and submit it.
+      // submitCartForm(params);
+      settings.finished = true;
+      saveSettings();
+  
+    } catch (error) {
+      console.error("Error in processing flow:", error);
+      // _countAndRun();
+    }
   }
-};
+
+  function _countAndRun() {
+    displayTextInBottomLeftCorner('No tickets found!');
+    console.log('No tickets found!');
+    setTimeout(() => {
+      //window.location.href = $settings.url;
+      _countScriptRunning();
+      main();
+      console.log('calling main function')
+    }, settings.secondsToRestartIfNoTicketsFound ? settings.secondsToRestartIfNoTicketsFound * 1000 : 5 * 1000);
+  }
+
+  function _countScriptRunning() {
+    let ticketCatcherCounter = sessionStorage.getItem('RealTicketCatcherCounter');
+    if (ticketCatcherCounter === null) ticketCatcherCounter = 1
+    console.log(
+      'Script "' +
+        '" has been run ' +
+        ticketCatcherCounter +
+        ' times from ' +
+        settings.timesToBrowserTabReload +
+        '.'
+    );
+    if (ticketCatcherCounter >= settings.timesToBrowserTabReload) {
+      sessionStorage.setItem('RealTicketCatcherCounter', 0);
+      console.log('reloading page...')
+      window.location.reload()
+    } else {
+      sessionStorage.setItem('RealTicketCatcherCounter', ++ticketCatcherCounter);
+    }
+  }
+  
+  /**
+   * Opens an IndexedDB database and returns a Promise for the DB instance.
+   */
+  function openDatabase(name, version) {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(name, version);
+      request.onsuccess = event => resolve(event.target.result);
+      request.onerror = event => reject(event.target.error);
+    });
+  }
+  
+  /**
+   * Counts records in an object store.
+   */
+  function countObjectStore(db, storeName) {
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(storeName, "readonly");
+      const objectStore = transaction.objectStore(storeName);
+      const countRequest = objectStore.count();
+      countRequest.onsuccess = () => resolve(countRequest.result);
+      countRequest.onerror = () => reject(countRequest.error);
+    });
+  }
+  
+  /**
+   * Handles captcha resolution and validation if required.
+   */
+  async function handleCaptchaIfNeeded() {
+    console.log("in handleCaptchaIfNeeded", settings)
+  
+    // Request captcha token if not available.
+    if (!settings.captcha_token) {
+      chrome.runtime.sendMessage(
+        { action: "resolve-captcha", content: data_sitekey },
+        response => {
+          if (response?.transcription) {
+            console.log("Captcha solved:", response.transcription);
+            settings.captcha_token = response.transcription;
+            saveSettings();
+          } else if (response?.error) {
+            console.error("Captcha error:", response.error);
+          } else {
+            console.error("No response from captcha resolver.");
+          }
+        }
+      );
+      setInterval(updateCaptchaStatus, 100000);
+      console.log('CAPTCHA STATUS UPDATE', settings.captcha_token)
+      // location.reload();
+    }
+  
+    if (settings.captcha_token && settings.captcha_required) {
+      console.log("Validating captcha...");
+      const validationResponse = await sendFormDataRequest({
+        url: `https://deportes.entradas.com/sports-web/validateCapcha`,
+        payload: { captcha: settings.captcha_token, action: "prebook" },
+      });
+      console.log("Captcha validation:", validationResponse.response);
+      if (validationResponse.response === false) {
+        settings.captcha_required = true;
+        saveSettings();
+        window.location.reload();
+      } else {
+        settings.captcha_required = false;
+        saveSettings();
+      }
+    }
+  }
+
+
+  function displayTextInBottomLeftCorner(text) {
+    const existingTextElement = document.getElementById('bottomLeftText');
+
+    // Функція для форматування чисел менше 10 з додаванням "0" спереду
+    function formatNumber(num) {
+      return num < 10 ? `0${num}` : num;
+    }
+
+    // Функція для отримання поточного часу у форматі "ГГ:ХХ:СС"
+    function getCurrentTime() {
+      const now = new Date();
+      const hours = formatNumber(now.getHours());
+      const minutes = formatNumber(now.getMinutes());
+      const seconds = formatNumber(now.getSeconds());
+      return `${hours}:${minutes}:${seconds}`;
+    }
+
+    if (!existingTextElement) {
+      // Створюємо елемент, якщо він ще не існує
+      const newTextElement = document.createElement('div');
+      newTextElement.id = 'bottomLeftText';
+
+      // Стилі для новоствореного елементу
+      newTextElement.style.position = 'absolute';
+      newTextElement.style.bottom = '0';
+      newTextElement.style.left = '0';
+      newTextElement.style.padding = '10px';
+      newTextElement.style.backgroundColor = '#000';
+      newTextElement.style.color = '#fff';
+      newTextElement.style.fontFamily = 'Arial, sans-serif';
+
+      // Додаємо новостворений елемент до body
+      document.body.appendChild(newTextElement);
+
+      // Виводимо текст та час
+      newTextElement.textContent = `${text} - ${getCurrentTime()}`;
+    } else {
+      // Оновлюємо текст та час у вже існуючому елементі
+      existingTextElement.textContent = `${text} - ${getCurrentTime()}`;
+    }
+  }
+  
+  /**
+   * Processes the XML response from the map request to extract suitable zones.
+   */
+  function processResponse(xmlText, sectors, ent, minprc, maxprc, subsecciones) {
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(xmlText, "application/xml");
+  
+    // Optionally check a random area (for logging or captcha purposes).
+    const availableAreas = xmlDoc.querySelectorAll(sectors);
+    if (availableAreas.length) {
+      const randomArea = availableAreas[Math.floor(Math.random() * availableAreas.length)]
+        .getAttribute("data-name");
+      if (randomArea && subsecciones[randomArea]) {
+        const subseccion = xmlDoc.getElementById(subsecciones[randomArea]);
+        console.log("Subsection status:", subseccion && subseccion.children.length > 0 ? "Has seats" : "No seats");
+      }
+    }
+  
+    // Extract zones that meet the criteria.
+    const suitableZones = [];
+    const zones = xmlDoc.querySelectorAll("path[data-available-seats]");
+    zones.forEach(zone => {
+      const seats = parseInt(zone.getAttribute("data-available-seats"), 10);
+      const minPrice = parseInt(zone.getAttribute("data-min-price"), 10);
+      if (seats >= ent && minPrice >= minprc && minPrice <= maxprc) {
+        suitableZones.push(zone.getAttribute("data-internal-id"));
+      }
+    });
+    console.log("Suitable zones:", suitableZones);
+    return suitableZones;
+  }
+  
+  /**
+   * Sends a prebook request for a given zone.
+   * Returns an array [prebookResponse, zoneId] if successful, or null if not.
+   */
+  async function prebookZone(zoneId, ent) {
+    try {
+      const prebookResponse = await sendFormDataRequest({
+        url: "https://deportes.entradas.com/sports-web/prebook",
+        payload: {
+          seats: ent,
+          sessionId: Number(sessionId),
+          teamUcc: "RMA",
+          zoneId: zoneId,
+        },
+      });
+      console.log("Prebook success for zone", zoneId, prebookResponse);
+      if (
+        prebookResponse.message === "Lo sentimos ,  el captcha no se ha validado" ||
+        prebookResponse.message === "Sorry,captcha not validated"
+      ) {
+        settings.captcha_required = true;
+        saveSettings();
+        return null;
+      }
+      if (prebookResponse.resultType === "OK") {
+        settings.captcha_required = false;
+        saveSettings();
+        return [prebookResponse, zoneId];
+      }
+    } catch (error) {
+      console.error("Prebook failed for zone", zoneId, error);
+    }
+    return null;
+  }
+  
+  /**
+   * Populates the form with hidden inputs using URLSearchParams and submits it.
+   */
+  function submitCartForm(params) {
+    const form = document.querySelector("#confirmForm");
+    if (!form) {
+      console.error("Form with id 'confirmForm' not found.");
+      return;
+    }
+    form.innerHTML = "";
+
+    params.forEach((value, key) => {
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = key;
+      input.value = value;
+      form.appendChild(input);
+    });
+    form.submit();
+  }
+
+  async function updateCaptchaStatus() {
+    console.log("updateCaptchaStatus call!")
+    try {
+      settings.captcha_token = false;
+      settings.captcha_required = true;
+      saveSettings();
+      console.log("Updated captcha_token at", new Date().toLocaleTimeString());
+    } catch (error) {
+      console.error("Error updating captcha status:", error);
+    }
+  }
+  
+}
+
 function sendFormDataRequest(options) {
   // Default options with proper headers (including Priority)
   const defaults = {

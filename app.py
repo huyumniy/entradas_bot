@@ -301,6 +301,12 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
             options=options,
             enable_cdp_events=True
         )
+    elif os.getlogin() in ['pc']:
+        driver = webdriver.Chrome(
+            version_main=132,
+            options=options,
+            enable_cdp_events=True
+        )
     else:
         driver = webdriver.Chrome(
             options=options,
@@ -379,13 +385,13 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
 
     solver = TwoCaptcha('ab8431ca9bda62c92650bc4040ba1754')
     sitekey = check_for_element(driver=driver,selector='.g-recaptcha', debug=True).get_attribute('data-sitekey')
-    print(sitekey)
-    try:
-        result = solver.recaptcha(
-            sitekey=sitekey,
-            url=initialUrl)
-        print('captcha result:', result)
-    except Exception as e: print("captcha error:",e)
+    # print(sitekey)
+    # try:
+    #     result = solver.recaptcha(
+    #         sitekey=sitekey,
+    #         url=initialUrl)
+    #     print('captcha result:', result)
+    # except Exception as e: print("captcha error:",e)
 
     input('continue?')
 
