@@ -518,7 +518,6 @@ window.onload = () => {
       if (validationResponse.response === false) {
         settings.captcha_required = true;
         saveSettings();
-        window.location.reload();
       } else {
         settings.captcha_required = false;
         saveSettings();
