@@ -283,6 +283,7 @@ window.onload = () => {
     window.stopExecutionFlag = undefined;
     settings.finished = false;
     saveSettings(); // Save the updated settings to IndexedDB
+    window.location.reload()
   }
 
   function saveSettings() {
@@ -517,6 +518,7 @@ window.onload = () => {
       console.log("Captcha validation:", validationResponse.response);
       if (validationResponse.response === false) {
         settings.captcha_required = true;
+        settings.captcha_token = null;
         saveSettings();
       } else {
         settings.captcha_required = false;
