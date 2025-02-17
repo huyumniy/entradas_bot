@@ -1,5 +1,5 @@
 const TwoCaptcha = require("@2captcha/captcha-solver")
-const solver = new TwoCaptcha.Solver("ab8431ca9bda62c92650bc4040ba1754");
+const solver = new TwoCaptcha.Solver("29ada3bf8a7df98cfa4265ea1145c77b");
 
 // Listen for a request from content.js
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {

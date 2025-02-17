@@ -367,10 +367,10 @@ window.onload = () => {
         _countAndRun();
         return;
       }
-  
+      
       // Prebook each suitable zone concurrently.
       const successfulZones = await Promise.all(
-        suitableZones.map(zoneId => prebookZone(zoneId, ent))
+        suitableZones.map(zoneId => prebookZone(zoneId, ent, isMadridista))
       );
       // Filter out unsuccessful prebook responses.
       const validZones = successfulZones.filter(item => item !== null);
@@ -504,7 +504,7 @@ window.onload = () => {
           }
         }
       );
-      setInterval(updateCaptchaStatus, 100000);
+      // setInterval(updateCaptchaStatus, 100000);
       console.log('CAPTCHA STATUS UPDATE', settings.captcha_token)
       // location.reload();
     }
@@ -619,8 +619,8 @@ window.onload = () => {
       });
       console.log("Prebook success for zone", zoneId, prebookResponse);
       if (
-        prebookResponse.message === "Lo sentimos ,  el captcha no se ha validado" ||
-        prebookResponse.message === "Sorry,captcha not validated"
+        prebookResponse.message.includes("Lo sentimos ,  el captcha no se ha validado") ||
+        prebookResponse.message.includes("Sorry,captcha not validated")
       ) {
         settings.captcha_required = true;
         saveSettings();

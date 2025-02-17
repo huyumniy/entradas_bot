@@ -6,7 +6,6 @@ import tempfile
 from flask import Flask, request, Response 
 from slack_sdk import WebClient
 from colorama import init, Fore
-from twocaptcha import TwoCaptcha
 import subprocess
 import requests
 import threading
@@ -293,7 +292,7 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
     
     # Create a Service object using the chromedriver path
     service = Service(executable_path=chromedriver_path)
-    if os.getlogin() in ['vladk','S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10', 'S11', 'S12', 'S13', 'S14', 'S15',
+    if os.getlogin() in ['root', 'vladk','S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10', 'S11', 'S12', 'S13', 'S14', 'S15',
     'S3U1', 'S3U2', 'S3U3', 'S3U4', 'S3U5', 'S3U6', 'S3U7', 'S3U8', 'S3U9', 'S3U10', 'S3U11', 'S3U12', 'S3U13', 'S3U14', 'S3U15', 'S3U16',
     'Admin3']:
         driver = webdriver.Chrome(
@@ -382,16 +381,6 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
     driver.get(initialUrl)
     print(Fore.GREEN + f"Thread {thread_number}: Successfully started!\n")
     time.sleep(10)
-
-    solver = TwoCaptcha('ab8431ca9bda62c92650bc4040ba1754')
-    sitekey = check_for_element(driver=driver,selector='.g-recaptcha', debug=True).get_attribute('data-sitekey')
-    # print(sitekey)
-    # try:
-    #     result = solver.recaptcha(
-    #         sitekey=sitekey,
-    #         url=initialUrl)
-    #     print('captcha result:', result)
-    # except Exception as e: print("captcha error:",e)
 
     input('continue?')
 
