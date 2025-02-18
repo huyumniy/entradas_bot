@@ -282,6 +282,7 @@ window.onload = () => {
     settings.selection = parseInt(document.getElementById("selection").value);
     window.stopExecutionFlag = undefined;
     settings.finished = false;
+    settings.banned = false;
     saveSettings(); // Save the updated settings to IndexedDB
     window.location.reload()
   }
@@ -310,6 +311,11 @@ window.onload = () => {
     // Exit early if reservations are already finished.
     if (settings.finished) {
       alert("Seats already reserved! Please delete them to start new search!");
+      return;
+    }
+
+    if (settings.banned) {
+      alert("Ваший IP забанений, оновіть налаштування щоб знову увімкнути бота.");
       return;
     }
   
@@ -354,8 +360,12 @@ window.onload = () => {
     }
   
     try {
-      const mapUrl = `https://deportes.entradas.com/sports-web/map/svg/rma/${sessionId}/1?`;
+      const mapUrl = `https://deportes.entradas.com/sports-web/map/svg/rma/${sessionId}/0?`;
       const mapResponse = await fetch(mapUrl);
+      if (mapResponse.status === 403) {
+        console.log('Error 403')
+        location.reload();
+      }
       const mapText = await mapResponse.text();
   
       await handleCaptchaIfNeeded();
@@ -368,18 +378,18 @@ window.onload = () => {
         return;
       }
       
-      // Prebook each suitable zone concurrently.
-      const successfulZones = await Promise.all(
-        suitableZones.map(zoneId => prebookZone(zoneId, ent, isMadridista))
-      );
-      // Filter out unsuccessful prebook responses.
-      const validZones = successfulZones.filter(item => item !== null);
-      if (!validZones.length) {
-        console.log("No zones were successfully prebooked.");
+      // Choose one random zone from the suitable zones.
+      const randomZone = suitableZones[Math.floor(Math.random() * suitableZones.length)];
+      console.log("Selected random zone for prebooking:", randomZone);
+
+      // Send the prebook request for the selected random zone.
+      const prebookResult = await prebookZone(randomZone, ent, settings.madridista);
+      if (!prebookResult) {
+        console.log("Prebook request failed for zone:", randomZone);
         _countAndRun();
         return;
       }
-  
+      console.log("Prebook success for zone:", randomZone, prebookResult);
       // Prepare cart POST data.
       const cart_post = {
         numTickets: ent,
@@ -400,7 +410,7 @@ window.onload = () => {
       };
   
       // Use the first valid zone for cart submission.
-      const [prebookResponse, zoneId] = validZones[0];
+      const [prebookResponse, zoneId] = prebookResult;
   
       // Build URLSearchParams payload.
       const params = new URLSearchParams();
@@ -417,7 +427,7 @@ window.onload = () => {
       console.log("FINAL PAYLOAD:", params.toString());
   
       // Populate the hidden inputs on the form and submit it.
-      submitCartForm(params);
+      // submitCustomForm("#confirmForm", params);
       settings.finished = true;
       saveSettings();
   
@@ -606,23 +616,50 @@ window.onload = () => {
    * Sends a prebook request for a given zone.
    * Returns an array [prebookResponse, zoneId] if successful, or null if not.
    */
-  async function prebookZone(zoneId, ent) {
+  async function prebookZone(zoneId, ent, madridista) {
     try {
-      const prebookResponse = await sendFormDataRequest({
-        url: "https://deportes.entradas.com/sports-web/prebook",
-        payload: {
-          seats: ent,
-          sessionId: Number(sessionId),
-          teamUcc: "RMA",
-          zoneId: zoneId,
-        },
-      });
+      let prebookResponse = null;
+      if (madridista) {
+        prebookResponse = await sendFormDataRequest({
+          url: "https://deportes.entradas.com/sports-web/prebook",
+          payload: {
+            seats: ent,
+            sessionId: Number(sessionId),
+            teamUcc: "RMA",
+            zoneId: zoneId,
+            "socios[0].method": document.querySelectorAll('#form-prebook > div > input[name="socios[0].method"]')[0].value,
+            "socios[0].numSocio": settings.madridista.login,
+            "socios[0].pinSocio": settings.madridista.password,
+            "socios[0].method": document.querySelectorAll('#form-prebook > div > input[name="socios[0].method"]')[1].value,
+            "socios[0].numFriends": settings.madridista.selection,
+            "socios[0].seasonTicket": document.querySelector('#form-prebook > div >  input[name="socios[0].seasonTicket"]').value
+          },
+        });
+      }
+      else {
+        prebookResponse = await sendFormDataRequest({
+          url: "https://deportes.entradas.com/sports-web/prebook",
+          payload: {
+            seats: ent,
+            sessionId: Number(sessionId),
+            teamUcc: "RMA",
+            zoneId: zoneId,
+          },
+        });
+      }
+      
       console.log("Prebook success for zone", zoneId, prebookResponse);
       if (
         prebookResponse.message.includes("Lo sentimos ,  el captcha no se ha validado") ||
         prebookResponse.message.includes("Sorry,captcha not validated")
       ) {
         settings.captcha_required = true;
+        saveSettings();
+        return null;
+      }
+      if (prebookResponse.message.includes("Se ha deshabilitado temporalmente el acceso desde esta IP") ||
+          prebookResponse.message.includes("Access from this IP has been temporarily disabled")) {
+        settings.banned = true;
         saveSettings();
         return null;
       }
@@ -640,10 +677,10 @@ window.onload = () => {
   /**
    * Populates the form with hidden inputs using URLSearchParams and submits it.
    */
-  function submitCartForm(params) {
-    const form = document.querySelector("#confirmForm");
+  function submitCustomForm(selector, params) {
+    const form = document.querySelector(selector);
     if (!form) {
-      console.error("Form with id 'confirmForm' not found.");
+      console.error(`Form with id '${selector}' not found.`);
       return;
     }
     form.innerHTML = "";
@@ -657,6 +694,7 @@ window.onload = () => {
     });
     form.submit();
   }
+
 
   async function updateCaptchaStatus() {
     console.log("updateCaptchaStatus call!")
