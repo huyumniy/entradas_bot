@@ -370,7 +370,7 @@ window.onload = () => {
       
       // Prebook each suitable zone concurrently.
       const successfulZones = await Promise.all(
-        suitableZones.map(zoneId => prebookZone(zoneId, ent, isMadridista))
+        suitableZones.map(zoneId => prebookZone(zoneId, ent))
       );
       // Filter out unsuccessful prebook responses.
       const validZones = successfulZones.filter(item => item !== null);
