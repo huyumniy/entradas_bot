@@ -381,7 +381,7 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
     
     # Create a Service object using the chromedriver path
     service = Service(executable_path=chromedriver_path)
-    if os.getlogin() in ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10', 'S11', 'S12', 'S13', 'S14', 'S15',
+    if os.getlogin() in ['pc','S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10', 'S11', 'S12', 'S13', 'S14', 'S15',
     'S3U1', 'S3U2', 'S3U3', 'S3U4', 'S3U5', 'S3U6', 'S3U7', 'S3U8', 'S3U9', 'S3U10', 'S3U11', 'S3U12', 'S3U13', 'S3U14', 'S3U15', 'S3U16',
     'Admin3']:
         driver = webdriver.Chrome(
@@ -403,7 +403,7 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
     except Exception as e:
         print(f"Error handling tabs: {e}")
 
-    driver.get('https://nopecha.com/setup#awscaptcha_auto_open=true|awscaptcha_auto_solve=false|awscaptcha_solve_delay=true|awscaptcha_solve_delay_time=0|disabled_hosts=|enabled=true|funcaptcha_auto_open=true|funcaptcha_auto_solve=false|funcaptcha_solve_delay=true|funcaptcha_solve_delay_time=0|geetest_auto_open=false|geetest_auto_solve=false|geetest_solve_delay=true|geetest_solve_delay_time=1000|hcaptcha_auto_open=true|hcaptcha_auto_solve=false|hcaptcha_solve_delay=true|hcaptcha_solve_delay_time=3000|sub_1QD8apCRwBwvt6pthLg8WQKk|keys=|lemincaptcha_auto_open=false|lemincaptcha_auto_solve=false|lemincaptcha_solve_delay=true|lemincaptcha_solve_delay_time=1000|perimeterx_auto_solve=false|perimeterx_solve_delay=true|perimeterx_solve_delay_time=1000|recaptcha_auto_open=true|recaptcha_auto_solve=true|recaptcha_solve_delay=true|recaptcha_solve_delay_time=1000|recaptcha_solve_method=Image|textcaptcha_auto_solve=false|textcaptcha_image_selector=.captcha-code|textcaptcha_input_selector=#solution|textcaptcha_solve_delay=true|textcaptcha_solve_delay_time=0|turnstile_auto_solve=false|turnstile_solve_delay=true|turnstile_solve_delay_time=30000')
+    driver.get('https://nopecha.com/setup#sub_1QsSuQCRwBwvt6ptjP0yralq|keys=|enabled=true|disabled_hosts=|hcaptcha_auto_open=true|hcaptcha_auto_solve=false|hcaptcha_solve_delay=true|hcaptcha_solve_delay_time=3000|recaptcha_auto_open=true|recaptcha_auto_solve=true|recaptcha_solve_delay=true|recaptcha_solve_delay_time=1000|funcaptcha_auto_open=true|funcaptcha_auto_solve=false|funcaptcha_solve_delay=true|funcaptcha_solve_delay_time=0|awscaptcha_auto_open=true|awscaptcha_auto_solve=false|awscaptcha_solve_delay=true|awscaptcha_solve_delay_time=0|turnstile_auto_solve=false|turnstile_solve_delay=true|turnstile_solve_delay_time=30000|perimeterx_auto_solve=false|perimeterx_solve_delay=true|perimeterx_solve_delay_time=1000|textcaptcha_auto_solve=false|textcaptcha_solve_delay=true|textcaptcha_solve_delay_time=0|textcaptcha_image_selector=.captcha-code|textcaptcha_input_selector=#solution|geetest_auto_open=false|geetest_auto_solve=false|geetest_solve_delay=true|geetest_solve_delay_time=1000|lemincaptcha_auto_open=false|lemincaptcha_auto_solve=false|lemincaptcha_solve_delay=true|lemincaptcha_solve_delay_time=1000|recaptcha_solve_method=Image')
     if proxyList:
         driver.get('chrome://extensions/')
         time.sleep(1)
@@ -637,7 +637,7 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                         ensure_check_elem(driver, '#alert-ok', tmt=5, methode=By.CSS_SELECTOR, click=True)
                     except:
                         pass
-                    if madridista:
+                    if madridista and not check_for_element(driver, '#resumeMembers tbody tr'):
                         # try:
                         #     ensure_check_elem(driver, '//*[@id="select-ticket-container"]//a[contains(text(),"ista Pr")]',click=True)
                         #     ensure_check_elem(driver, '//*[@id="nsocioG"]',click=True).send_keys(numero_mad)
@@ -656,8 +656,10 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                             password_input = check_for_element(driver, '#pinsocio', click=True)
                             password_input.clear()
                             password_input.send_keys(con_mad)
-                            num_friends_selector = check_for_element(driver, '#num-friends')
-                            Select(num_friends_selector).select_by_visible_text(acom)
+                            try:
+                                num_friends_selector = check_for_element(driver, '#num-friends')
+                                Select(num_friends_selector).select_by_visible_text(acom)
+                            except: print("Can't select #num-friends tag")
                             check_for_element(driver, '#valida-socio', click=True)
                             erorr_message = wait_for_element(driver, 'div[style="width:500px;"][class="error message"]')
                             time.sleep(2)
@@ -666,7 +668,7 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                             print(e)
                             time.sleep(5)
                             match_data = False
-                    else:
+                    elif not madridista:
                         try:
                             try:
                                 ensure_check_elem(driver, '//*[@id="num-entradas"]', methode=By.XPATH, tmt=2)
@@ -692,12 +694,20 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                     except:
                         pass
                     break
+                loadingModal = check_for_element(driver, '#loadingModal')
+                if loadingModal:
+                    loadingModalStyle = loadingModal.get_attribute('style')
+                    if loadingModalStyle == "z-index: 999; display: block;":
+                        driver.refresh()
+                        continue
+                # print(match_data)
                 if match_data == False: continue
                 sectors = None
                 try:
                     try:
                         driver.find_element(
                             By.XPATH, '//*[@id="onetrust-accept-btn-handler"]').click()
+                        
                         driver.execute_script("document.querySelector('div.onetrust-pc-dark-filter.ot-fade-in').remove()")
                     except:
                         pass
