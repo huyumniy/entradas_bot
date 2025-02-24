@@ -1,4 +1,7 @@
 window.onload = () => {
+  let data_sitekey = null;
+  let sessionId = document.querySelector("#sessionId").getAttribute("value");
+
   let db;
   let settings = {
     minPrice: null,
@@ -15,36 +18,407 @@ window.onload = () => {
     secondsToRestartIfNoTicketsFound: 10
   };
 
-  let data_sitekey = null;
-  handleCaptchaReceive(function (doc) {
-    if (doc.querySelector("#recaptcha-token")?.value) {
-      data_sitekey = document
-        .querySelector("div[data-sitekey]")
-        .getAttribute("data-sitekey");
-      console.log(data_sitekey);
-      main();
+  let UI = {
+    __settingsHTML: `<div class="tickets tickets_popup_wrapper">
+    <div class="tickets tickets_popup">
+      <h1 class="tickets tickets_h1">Налаштування</h1>
+
+      <h2 class="tickets tickets_h2">Квитки</h2>
+
+      <span class="tickets tickets_title">Ціна:</span>
+
+      <input type="number" name="minimum_price" placeholder="Мінамальна" class="tickets tickets_input">
+      —
+      <input type="number" name="maximum_price" placeholder="Максимальна" class="tickets tickets_input">
+      
+     <form class="tickets view_selector">
+        <span class="tickets tickets_title">Select View:</span>
+        <input type="radio" name="view" value="0" id="0"><label for="view_0">0 : ALL</label>
+        <input type="radio" name="view" value="F" id="F"><label for="view_F">F : FRONTAL</label>
+        <input type="radio" name="view" value="L" id="L"><label for="view_L">L : LATERAL</label>
+        <br>
+      </form>
+
+      <span class="tickets tickets_title">Кількість:</span>
+      <div class="tickets_select" data-select="count">
+      <div class="tickets tickets_selector" data-value="1">1</div>
+      <div class="tickets tickets_selector" data-value="2">2</div>
+      <div class="tickets tickets_selector" data-value="3">3</div>
+      <div class="tickets tickets_selector" data-value="4">4</div>
+      <div class="tickets tickets_selector" data-value="5">5</div>
+      <div class="tickets tickets_selector tickets_selector_selected" data-value="6">6</div>
+      </div>
+
+      <br>
+        <span class="tickets tickets_title">Категорії:</span>
+      <div class="category_select" data-select="count">
+      <div class="tickets category_selector category_selector_selected" data-value="C3">Category 3</div>
+      <div class="tickets category_selector" data-value="C2Behind">Category 2 Behind the Goal</div>
+      <div class="tickets category_selector" data-value="C2Long">Category 2 Long Side</div>
+      <div class="tickets category_selector" data-value="C1Upper">Category 1 Upper</div>
+        <div class="tickets category_selector" data-value="C1">Category 1</div>
+      <div class="tickets category_selector" data-value="C1Premium">Category 1 Premium</div>
+      </div>
+
+      <br>
+
+
+        <span class="tickets tickets_title">Додаткові сектори:</span>
+      <div class="tickets tickets_data">
+      </div>
+      <button class="tickets tickets_button add_sector">+</button>
+
+      <hr class="tickets tickets_hr">
+
+      <h2 class="tickets tickets_h2">Інтервал оновлення</h2>
+      <input type="number" name="interval" placeholder="Секунды" class="tickets_input" value="15">
+      <span class="tickets_notice">Оптимальний час: 15 сек</span>
+
+      <br><br>
+
+      <button class="tickets tickets_button" id="tickets_cancel">Назад</button>
+      <button class="tickets tickets_button tickets_button_colored" id="tickets_start">Оновити налаштування</button>
+    </div>
+  </div>`,
+    __settingsCSS: `.tickets {
+	      font-family: 'Calibri';
+	    }
+
+	    .tickets_popup_wrapper {
+	      position: fixed;
+	      top: 0;
+	      left: 0;
+	      width: 100%;
+	      height: 100%;
+	      background: rgba( 0, 0, 0, .5 );
+	      overflow: auto;
+	      z-index: 1000;
+	      display: none;
+	    }
+      
+      .tickets_data {
+        display:block;
+      }
+      
+      .tickets_data input {
+        margin-right: 5px;
+      }
+
+	    .tickets_popup {
+	      width: 500px;
+	      padding: 15px;
+	      box-sizing: border-box;
+	      margin: 50px auto;
+	      background: #fff;
+	      border-radius: 4px;
+	      position: relative;
+	    }
+
+	    .tickets_h1, .tickets_h2 {
+	      margin: 5px 0;
+	      font-weight: bold;
+	    }
+
+	    .tickets_h1 {
+	      font-size: 30px;
+	    }
+
+	    .tickets_h2 {
+	      font-size: 24px;
+	    }
+
+	    .tickets_select {
+	        display: inline-block;
+	    }
+
+	    .tickets_selector {
+	      margin: 3px 0;
+	      padding: 5px 15px;
+	      border: 1px solid #999;
+	      display: inline-block;
+	      border-radius: 4px;
+	      cursor: pointer;
+	      color: #555;
+	    }
+
+	    .tickets_selector:hover {
+	      background: rgba( 0, 0, 0, 0.05 );
+	    }
+
+	    .tickets_selector_selected {
+	      color: #000;
+	      font-weight: bold;
+	      border: 1px solid #2482f1;
+	    }
+
+	    .category_selector {
+	      margin: 3px 0;
+	      padding: 5px 15px;
+	      border: 1px solid #999;
+	      display: inline-block;
+	      border-radius: 4px;
+	      cursor: pointer;
+	      color: #555;
+	    }
+
+	    .category_selector:hover {
+	      background: rgba( 0, 0, 0, 0.05 );
+	    }
+
+	    .category_selector_selected {
+	      color: #000;
+	      font-weight: bold;
+	      border: 1px solid #2482f1;
+	    }
+
+	    .tickets_hr {
+	      width: 50%;
+	      border: 0;
+	      height: 1px;
+	      background: #aaa;
+	      margin: 10px auto;
+	    }
+
+	    .tickets_input {
+	      margin: 3px 0;
+	      padding: 5px 15px;
+	      border-radius: 4px;
+	      border: 1px solid #999;
+	      font-size: 16px;
+	      font-family: 'Calibri';
+	      outline: none;
+	    }
+
+	    .tickets_input:focus {
+	       border: 1px solid #2482f1;
+	    }
+
+	    .tickets_title {
+	      margin-right: 10px;
+	    }
+
+	    .tickets_button {
+	      padding: 5px 15px;
+	      border: 1px solid #aaa;
+	      border-radius: 4px;
+	      font-family: 'Calibri';
+	      font-size: 16px;
+	      cursor: pointer;
+	    }
+
+	    .tickets_button_colored {
+	      font-weight: bold;
+	      background: #2482f1;
+	      border: 1px solid #2482f1;
+	      color: #fff;
+	    }
+
+	    .tickets_notice {
+	        color: #555;
+	    }
+		.settings-info{
+			position: fixed;
+			bottom: 15px;
+			right: 15px;
+			padding: 15px;
+			background: #2482f1;
+			color: #fff;
+			width: 200px;
+		}`,
+    __settingsInfoCSS: `.settings-info{
+      position: fixed;
+      bottom: 15px;
+      left: 15px;
+      padding: 15px;
+      background: #139df4;
+      color: #fff;
+      width: 300px;
+      border-radius: 5px;
     }
-  });
+    .settings-info p{
+      font-family: 'Calibri';
+      margin-bottom: 0;
+    }`,
+    __infoHTML: `<div class="settings-info" id="settings-info"></div>`,
+    init: function () {
+      console.log('in init')
+      
+      document.body.innerHTML += UI.__settingsHTML
 
-  // Open IndexedDB and load stored settings if available
-  const sessionId = document.querySelector("#sessionId").getAttribute("value");
-  const request = indexedDB.open("TicketBotDB", 1);
+      let style = document.createElement( 'style' );
+      style.innerText = UI.__settingsCSS;
 
-  request.onupgradeneeded = function (event) {
-    db = event.target.result;
-    if (!db.objectStoreNames.contains("settings")) {
-      db.createObjectStore("settings", { keyPath: "id" });
-    }
-  };
+      document.head.appendChild( style );
+    
+      // inject HTML
+      const container = document.createElement('div');
+      container.id = 'settingsFormContainer';
+      
+      container.innerHTML = UI.__settingsHTML
+      
+      
+      document.body.appendChild(container);
+    
+      // Get elements
+      const madridistaFields = container.querySelector('.madridista-fields');
+      const madridistaCheckbox = container.querySelector('#isMadridista');
+      const loginInput = container.querySelector('#login');
+      const passwordInput = container.querySelector('#password');
+      const selectionInput = container.querySelector('#selection');
+    
+      // Initialize form values
+      let radios = document.querySelectorAll('.view_selector > input[type="radio"]')
+      for (let radio of radios) {
+        if (settings.radio === radio.value) {
+          radio.checked = true;
+        }
+      }
+      document.querySelector('input[name="minimum_price"]').value = settings.minPrice || '';
+      document.querySelector('input[name="maximum_price"]').value = settings.maxPrice || '';
+      document.querySelector('input[name="interval"]').value = settings.secondsToRestartIfNoTicketsFound || 15;
+      if (settings.amount) {
+        let tickets = document.querySelectorAll('.tickets_selector');
+        
+        // Remove the selected class from all tickets first
+        tickets.forEach((tempTicket) => tempTicket.classList.remove('tickets_selector_selected'));
+    
+        // Loop through tickets and add the class if it matches the amount
+        for (let ticket of tickets) {
+            if (ticket.getAttribute('data-value') == settings.amount) {
+                ticket.classList.add('tickets_selector_selected');
+                break;  // Exit the loop once we find and modify the correct ticket
+            }
+        }
+      }
+      
+      // document.querySelector(`input[name="viewOption"][value="${settings.radio}"]`).checked = true;
+      // madridistaCheckbox.checked = settings.isMadridista;
+      // selectionInput.value = settings.selection || '1';
+      
+      // if (settings.isMadridista) {
+      //   madridistaFields.style.display = 'flex';
+      //   loginInput.value = settings.madridista?.login || '';
+      //   passwordInput.value = settings.madridista?.password || '';
+      // }
+    
+      // // Event listeners
+      // madridistaCheckbox.addEventListener('change', (e) => {
+      //   const isChecked = e.target.checked;
+      //   madridistaFields.style.display = isChecked ? 'flex' : 'none';
+      //   loginInput.disabled = !isChecked;
+      //   passwordInput.disabled = !isChecked;
+        
+      //   if (!isChecked) {
+      //     loginInput.value = '';
+      //     passwordInput.value = '';
+      //     selectionInput.value = '1';
+      //   }
+      // });
 
-  request.onsuccess = function (event) {
-    db = event.target.result;
-    loadSettings(); // Load settings from IndexedDB on success
-  };
 
-  request.onerror = function () {
-    console.error("Error opening IndexedDB.");
-  };
+      let cancel_button = document.getElementById( 'tickets_cancel' );
+      cancel_button.onclick = UI.closePopup;
+
+      let start_button = document.getElementById( 'tickets_start' );
+      start_button.onclick = updateSettings;
+
+
+      var selectors = document.getElementsByClassName( 'tickets_selector' );
+
+      for ( var i = 0; i < selectors.length; i++ ) {
+          selectors[i].onclick = function() {
+              UI.select( this );
+          }
+      }
+      
+      var categories = document.getElementsByClassName( 'category_selector' );
+
+      for ( var i = 0; i < categories.length; i++ ) {
+          categories[i].onclick = function() {
+              UI.categorySelect( this );
+          }
+      }
+
+      let tickets_data =  document.getElementsByClassName( 'tickets_data' )[0];
+      let add_sector = document.getElementsByClassName( 'add_sector' )[0];
+
+      add_sector.onclick = function ( event ) {
+        if ( event.target.classList.contains( 'add_sector' ) ) {
+
+          const newBlockInput = UI.addTicket('number', 'block', 'Сектор', 16);
+
+          tickets_data.appendChild(newBlockInput)
+        }
+      }
+
+      let wrapper = document.getElementsByClassName( 'tickets_popup_wrapper' )[0];
+      
+      wrapper.onclick = function ( event ) {
+          if ( event.target.classList.contains( 'tickets_popup_wrapper' ) ) UI.closePopup();
+      }
+    },
+    
+    openPopup: function () {
+      let el = document.getElementsByClassName( 'tickets_popup_wrapper' )[0];
+        el.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+    },
+
+    closePopup: function () {
+      let el = document.getElementsByClassName( 'tickets_popup_wrapper' )[0];
+        el.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    },
+
+    addTicket: function (type, name, placeholder, width) {
+      let input = document.createElement('input');
+      input.type = type;
+      input.name = name;
+      input.placeholder = placeholder;
+      input.className = 'tickets tickets_input';
+      input.style.width = `${width}%`;
+      
+      return input;
+    },
+
+    select: function ( el ) {
+        let parent = el.parentNode;
+        let els = parent.getElementsByClassName( 'tickets_selector' );
+
+        for ( let i = 0; i < els.length; i++ ) {
+            els[i].classList.remove( 'tickets_selector_selected' );
+        }
+
+        el.classList.add( 'tickets_selector_selected' );
+    },
+
+    categorySelect: function ( el ) {
+        if (el.classList.contains( 'category_selector_selected' ) ) {
+          el.classList.remove( 'category_selector_selected' );
+        } else {
+          el.classList.add( 'category_selector_selected' );
+        }
+    },
+
+    createButton: function ( text, func ) {
+        var btn = document.createElement( 'a' );
+        btn.className = 'right button button-small button-blue';
+        btn.innerHTML = text;
+        btn.style.position = 'fixed';
+        btn.style.right = '15px';
+        btn.style.bottom = '15px';
+        btn.style.cursor = 'pointer';
+        btn.style.letterSpacing = '1.2px';
+        btn.style.fontWeight = '600';
+
+        btn.onclick = function ( e ) {
+            e.preventDefault();
+            func();
+        };
+
+        document.body.appendChild( btn );
+    },
+  }
 
   function loadSettings() {
     const transaction = db.transaction("settings", "readonly");
@@ -57,215 +431,27 @@ window.onload = () => {
         settings = storedSettings.settings;
         console.log("Loaded settings from IndexedDB:", settings);
       }
-      createForm(); // Create the form after settings are loaded
+      UI.init();
+      UI.createButton( 'Налаштування', UI.openPopup );
     };
 
     getRequest.onerror = function () {
       console.error("Error loading settings from IndexedDB.");
-      createForm(); // Create the form even if there's an error
+      UI.init();
+      UI.createButton( 'Налаштування', UI.openPopup );
     };
   }
-
-  function createForm() {
-    const body = document.body;
-
-    const settingsFormContainer = document.createElement("div");
-    settingsFormContainer.id = "settingsFormContainer";
-    body.appendChild(settingsFormContainer);
-
-    const form = document.createElement("form");
-    form.id = "settingsForm";
-    form.style.display = "flex";
-    form.style.flexDirection = "column";
-
-    const labels = ["minPrice", "maxPrice", "amount"];
-    labels.forEach((label) => {
-      const inputDiv = document.createElement("div");
-      inputDiv.style.display = "flex";
-      inputDiv.style.alignItems = "center";
-      inputDiv.style.justifyContent = "space-between";
-      inputDiv.style.marginBottom = "10px";
-
-      const labelElement = document.createElement("label");
-      labelElement.for = label;
-      labelElement.textContent = `${label}:`;
-      labelElement.style.marginRight = "10px";
-
-      const inputElement = document.createElement("input");
-      inputElement.type = "text";
-      inputElement.id = label;
-      inputElement.name = label;
-      inputElement.value = settings[label] !== null ? settings[label] : "";
-
-      inputDiv.appendChild(labelElement);
-      inputDiv.appendChild(inputElement);
-      form.appendChild(inputDiv);
-    });
-
-    // Radio buttons
-    const radioOptions = [
-      { label: "F : FRONTAL", value: "F" },
-      { label: "L : LATERAL", value: "L" },
-      { label: "0 : ALL", value: "0" },
-    ];
-
-    const radioGroupLabel = document.createElement("div");
-    radioGroupLabel.textContent = "Select View:";
-    form.appendChild(radioGroupLabel);
-
-    radioOptions.forEach((option) => {
-      const radioDiv = document.createElement("div");
-      radioDiv.style.display = "flex";
-      radioDiv.style.alignItems = "center";
-      radioDiv.style.gap = "6px";
-
-      const radioLabel = document.createElement("label");
-      radioLabel.for = option.value;
-      radioLabel.textContent = option.label;
-      radioLabel.style.marginRight = "5px";
-
-      const radioInput = document.createElement("input");
-      radioInput.type = "radio";
-      radioInput.id = option.value;
-      radioInput.name = "viewOption";
-      radioInput.value = option.value;
-
-      if (settings.radio === option.value) {
-        radioInput.checked = true;
-      }
-
-      radioDiv.appendChild(radioInput);
-      radioDiv.appendChild(radioLabel);
-      form.appendChild(radioDiv);
-    });
-
-    // Madridista checkbox and login/password fields
-    const madridistaDiv = document.createElement("div");
-    madridistaDiv.style.display = "flex";
-    madridistaDiv.style.alignItems = "center";
-    madridistaDiv.style.marginBottom = "10px";
-
-    const madridistaLabel = document.createElement("label");
-    madridistaLabel.for = "isMadridista";
-    madridistaLabel.textContent = "Madridista?";
-    madridistaLabel.style.marginRight = "10px";
-
-    const madridistaCheckbox = document.createElement("input");
-    madridistaCheckbox.type = "checkbox";
-    madridistaCheckbox.id = "isMadridista";
-    madridistaCheckbox.checked = settings.isMadridista;
-
-    madridistaDiv.appendChild(madridistaCheckbox);
-    madridistaDiv.appendChild(madridistaLabel);
-    form.appendChild(madridistaDiv);
-
-    const madridistaInputsDiv = document.createElement("div");
-    madridistaInputsDiv.style.display = madridistaCheckbox.checked
-      ? "flex"
-      : "none";
-    madridistaInputsDiv.style.flexDirection = "column";
-    madridistaInputsDiv.style.marginBottom = "10px";
-
-    ["login", "password"].forEach((field) => {
-      const inputDiv = document.createElement("div");
-      inputDiv.style.display = "flex";
-      inputDiv.style.alignItems = "center";
-      inputDiv.style.justifyContent = "space-between";
-      inputDiv.style.marginBottom = "10px";
-
-      const fieldLabel = document.createElement("label");
-      fieldLabel.for = field;
-      fieldLabel.textContent = `${
-        field.charAt(0).toUpperCase() + field.slice(1)
-      }:`;
-      fieldLabel.style.marginRight = "10px";
-
-      const inputField = document.createElement("input");
-      inputField.type = field === "password" ? "password" : "text";
-      inputField.id = field;
-      inputField.name = field;
-      inputField.value = settings.madridista ? settings.madridista[field] : "";
-      inputField.disabled = !madridistaCheckbox.checked;
-
-      inputDiv.appendChild(fieldLabel);
-      inputDiv.appendChild(inputField);
-      madridistaInputsDiv.appendChild(inputDiv);
-    });
-
-    const selectDiv = document.createElement("div");
-    selectDiv.style.display = "flex";
-    selectDiv.style.alignItems = "center";
-    selectDiv.style.marginBottom = "10px";
-
-    const selectLabel = document.createElement("label");
-    selectLabel.for = "selection";
-    selectLabel.textContent = "Companions:";
-    selectLabel.style.marginRight = "10px";
-
-    const selectField = document.createElement("select");
-    selectField.id = "selection";
-    selectField.name = "selection";
-
-    [0, 1, 2, 3, 4].forEach((optionValue) => {
-      const option = document.createElement("option");
-      option.value = optionValue;
-      option.textContent = optionValue;
-      if (settings.selection === optionValue) {
-        option.selected = true;
-      }
-      selectField.appendChild(option);
-    });
-
-    selectDiv.appendChild(selectLabel);
-    selectDiv.appendChild(selectField);
-    madridistaInputsDiv.appendChild(selectDiv);
-
-    form.appendChild(madridistaInputsDiv);
-
-    madridistaCheckbox.addEventListener("change", (e) => {
-      const isChecked = e.target.checked;
-      madridistaInputsDiv.style.display = isChecked ? "flex" : "none";
-      document.getElementById("login").disabled = !isChecked;
-      document.getElementById("password").disabled = !isChecked;
-
-      if (!isChecked) {
-        document.getElementById("login").value = "";
-        document.getElementById("password").value = "";
-        document.getElementById("selection").value = 1; // Reset select to default
-        settings.madridista = null;
-      } else {
-        settings.madridista = { login: "", password: "" };
-      }
-      settings.isMadridista = isChecked;
-    });
-
-    const updateButton = document.createElement("button");
-    updateButton.type = "button";
-    updateButton.textContent = "Update Settings and Reload";
-    updateButton.addEventListener("click", updateSettings);
-    updateButton.style.width = "100%";
-    form.appendChild(updateButton);
-
-    settingsFormContainer.appendChild(form);
-    settingsFormContainer.style.position = "fixed";
-    settingsFormContainer.style.bottom = "10px";
-    settingsFormContainer.style.right = "10px";
-    settingsFormContainer.style.padding = "10px";
-    settingsFormContainer.style.backgroundColor = "#f0f0f0";
-    settingsFormContainer.style.border = "1px solid #ccc";
-  }
-
-
-
+  
  /* Database logic */
   function updateSettings() {
-    const minPrice = document.getElementById("minPrice").value;
-    const maxPrice = document.getElementById("maxPrice").value;
-    const amount = parseInt(document.getElementById("amount").value);
-
-    settings.minPrice = minPrice !== "" ? minPrice : null;
-    settings.maxPrice = maxPrice !== "" ? maxPrice : null;
+    const minPrice = document.querySelector('input[name="minimum_price"]').value
+    const maxPrice = document.querySelector('input[name="maximum_price"]').value
+    const amount = parseInt(document.querySelector(".tickets_selector_selected").getAttribute('data-value'));
+    const interval = document.querySelector('input[name="interval"]').value
+    settings.minPrice = minPrice !== "" ? parseInt(minPrice) : null;
+    settings.maxPrice = maxPrice !== "" ? parseInt(maxPrice) : null;
     settings.amount = amount !== "" ? amount : null;
+    settings.secondsToRestartIfNoTicketsFound = parseInt(interval);
 
     if (settings.isMadridista) {
       settings.madridista = {
@@ -275,11 +461,11 @@ window.onload = () => {
     }
 
     const selectedRadio = document.querySelector(
-      'input[name="viewOption"]:checked'
+      '.view_selector > input[type="radio"]:checked'
     );
     settings.radio = selectedRadio ? selectedRadio.value : null;
 
-    settings.selection = parseInt(document.getElementById("selection").value);
+    // settings.selection = parseInt(document.getElementById("selection").value);
     window.stopExecutionFlag = undefined;
     settings.finished = false;
     settings.banned = false;
@@ -303,6 +489,39 @@ window.onload = () => {
       console.error("Error updating settings in IndexedDB.");
     };
   }
+
+  function init() {
+    
+    handleCaptchaReceive(function (doc) {
+      if (doc.querySelector("#recaptcha-token")?.value) {
+        data_sitekey = document
+          .querySelector("div[data-sitekey]")
+          .getAttribute("data-sitekey");
+        console.log(data_sitekey);
+        main();
+      }
+    });
+  
+    // Open IndexedDB and load stored settings if available
+    const request = indexedDB.open("TicketBotDB", 1);
+  
+    request.onupgradeneeded = function (event) {
+      db = event.target.result;
+      if (!db.objectStoreNames.contains("settings")) {
+        db.createObjectStore("settings", { keyPath: "id" });
+      }
+    };
+  
+    request.onsuccess = function (event) {
+      db = event.target.result;
+      loadSettings(); // Load settings from IndexedDB on success
+      
+    };
+  
+    request.onerror = function () {
+      console.error("Error opening IndexedDB.");
+    };
+	}
 
 
   async function main() {
@@ -381,6 +600,8 @@ window.onload = () => {
       // Choose one random zone from the suitable zones.
       const randomZone = suitableZones[Math.floor(Math.random() * suitableZones.length)];
       console.log("Selected random zone for prebooking:", randomZone);
+      
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Send the prebook request for the selected random zone.
       const prebookResult = await prebookZone(randomZone, ent, settings.madridista);
@@ -707,7 +928,7 @@ window.onload = () => {
       console.error("Error updating captcha status:", error);
     }
   }
-  
+  init()
 }
 
 function sendFormDataRequest(options) {
