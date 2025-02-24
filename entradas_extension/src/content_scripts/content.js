@@ -648,7 +648,7 @@ window.onload = () => {
       console.log("FINAL PAYLOAD:", params.toString());
   
       // Populate the hidden inputs on the form and submit it.
-      // submitCustomForm("#confirmForm", params);
+      submitCustomForm("#confirmForm", params);
       settings.finished = true;
       saveSettings();
   
