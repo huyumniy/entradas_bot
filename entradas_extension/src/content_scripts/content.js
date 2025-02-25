@@ -2,11 +2,22 @@ window.onload = () => {
   let data_sitekey = null;
   let sessionId = document.querySelector("#sessionId").getAttribute("value");
 
+  const categoryMappings = {
+    C3: ['611', '612', '613', '614', '615', '616', '617', '618', '619', '620', '621', '622', '623', '624', '625', '626', '627', '628', '629', '630', '631', '632', '633', '634'],
+    C2Behind: ['513', '514', '515', '516', '517', '518', '519', '520', '521', '522', '523', '524', '525', '526', '527', '528', '529', '530', '531', '532', '533', '534', '410', '411', '412', '413', '414', '415', '416', '417', '418', '419', '420', '421', '422', '423', '424', '425', '426', '427', '428', '429', '430', '431', '432', '433', '320', '321', '322', '323', '324', '325', '326', '310', '311', '312', '313', '314', '315', '316', '317', '318', '319', '207', '208', '209', '210', '211', '212', '213', '214', '215', '216', '217', '218', '219', '220', '221', '222', '223', '224', '225', '226', '227', '228', '109', '110', '111', '112', '113', '114', '115', '116', '117', '118', '119', '120', '121', '122', '123', '124', '125', '126', '127', '128'],
+    C2Long: ['701', '702', '703', '704', '705', '706', '707', '708', '709', '710', '601', '602', '603', '604', '605', '606', '607', '608', '609', '610'],
+    C1Upper: ['535', '536', '537', '538', '539', '540', '541', '542', '543', '544', '501', '502', '503', '504', '505', '506', '507', '508', '509', '510', '511', '512'],
+    C1: ['433', '434', '435', '436', '437', '438', '405', '406', '407', '408', '409', '410', '325', '326', '307', '308', '309', '310', '229', '230', '205', '206', '227', '228'],
+    C1Premium: ['439', '440', '441', '442', '443', '444', '333', '334', '335', '336', '401', '402', '403', '404', '301', '302', '303', '304', '305', '306', '231', '232', '233', '234', '201', '202', '203', '204', '130', '131', '132', '133', '134', '101', '102', '103', '104', '105', '106']
+  };
+
   let db;
   let settings = {
     minPrice: null,
     maxPrice: null,
     amount: null,
+    categories: [],
+    sectors: [],
     isMadridista: false,
     madridista: { login: "222222", password: "2222222" } && null,
     radio: null,
@@ -52,7 +63,7 @@ window.onload = () => {
       <br>
         <span class="tickets tickets_title">Категорії:</span>
       <div class="category_select" data-select="count">
-      <div class="tickets category_selector category_selector_selected" data-value="C3">Category 3</div>
+      <div class="tickets category_selector" data-value="C3">Category 3</div>
       <div class="tickets category_selector" data-value="C2Behind">Category 2 Behind the Goal</div>
       <div class="tickets category_selector" data-value="C2Long">Category 2 Long Side</div>
       <div class="tickets category_selector" data-value="C1Upper">Category 1 Upper</div>
@@ -290,6 +301,24 @@ window.onload = () => {
             }
         }
       }
+      if (settings.categories) {
+        let categories = document.querySelectorAll('.category_selector');
+
+        for (let category of categories) {
+          if (settings.categories.includes(category.getAttribute('data-value'))) {
+            category.classList.add('category_selector_selected');
+          }
+        }
+      }
+
+      let tickets_data =  document.getElementsByClassName( 'tickets_data' )[0];
+      let add_sector = document.getElementsByClassName( 'add_sector' )[0];
+
+      for (let sector of settings.sectors) {
+        const newBlockInput = UI.addTicket('number', 'block', 'Сектор', 16, sector)
+
+        tickets_data.appendChild(newBlockInput)
+      }
       
       // document.querySelector(`input[name="viewOption"][value="${settings.radio}"]`).checked = true;
       // madridistaCheckbox.checked = settings.isMadridista;
@@ -339,9 +368,6 @@ window.onload = () => {
           }
       }
 
-      let tickets_data =  document.getElementsByClassName( 'tickets_data' )[0];
-      let add_sector = document.getElementsByClassName( 'add_sector' )[0];
-
       add_sector.onclick = function ( event ) {
         if ( event.target.classList.contains( 'add_sector' ) ) {
 
@@ -370,13 +396,14 @@ window.onload = () => {
         document.body.style.overflow = 'auto';
     },
 
-    addTicket: function (type, name, placeholder, width) {
+    addTicket: function (type, name, placeholder, width, value=null) {
       let input = document.createElement('input');
       input.type = type;
       input.name = name;
       input.placeholder = placeholder;
       input.className = 'tickets tickets_input';
       input.style.width = `${width}%`;
+      input.value = value;
       
       return input;
     },
@@ -448,11 +475,18 @@ window.onload = () => {
     const maxPrice = document.querySelector('input[name="maximum_price"]').value
     const amount = parseInt(document.querySelector(".tickets_selector_selected").getAttribute('data-value'));
     const interval = document.querySelector('input[name="interval"]').value
+    const categories = Array.from(document.querySelectorAll('body > div[class="tickets tickets_popup_wrapper"] > div[class="tickets tickets_popup"] .category_selector_selected'))
+    .map(category => category.getAttribute('data-value'))
+    const sectors = Array.from(document.querySelectorAll('div[class="tickets tickets_data"] > input'))
+    .map(sector => sector.value)
     settings.minPrice = minPrice !== "" ? parseInt(minPrice) : null;
     settings.maxPrice = maxPrice !== "" ? parseInt(maxPrice) : null;
     settings.amount = amount !== "" ? amount : null;
     settings.secondsToRestartIfNoTicketsFound = parseInt(interval);
-
+    settings.categories = categories;
+    settings.sectors = sectors;
+    
+    
     if (settings.isMadridista) {
       settings.madridista = {
         login: document.getElementById("login").value,
@@ -577,7 +611,15 @@ window.onload = () => {
       default:
         sectors = "g[data-name][class='sector']";
     }
-  
+    
+    let desiredSectors = settings.sectors.filter((e) => {return e;});
+    
+    const desiredSectorOnCategories = settings.categories.flatMap(category => categoryMappings[category] || []);
+    const tempSectorSet = new Set([ ...desiredSectorOnCategories, ...desiredSectors])
+
+    const finalDesiredSectors = [...tempSectorSet]
+
+
     try {
       const mapUrl = `https://deportes.entradas.com/sports-web/map/svg/rma/${sessionId}/0?`;
       const mapResponse = await fetch(mapUrl);
@@ -590,7 +632,7 @@ window.onload = () => {
       await handleCaptchaIfNeeded();
   
       // Process the XML response to determine suitable zones.
-      const suitableZones = processResponse(mapText, sectors, ent, minprc, maxprc, subsecciones);
+      const suitableZones = processResponse(mapText, sectors, ent, minprc, maxprc, subsecciones, finalDesiredSectors);
       if (!suitableZones.length) {
         console.log("No suitable zones found.");
         _countAndRun();
@@ -804,7 +846,7 @@ window.onload = () => {
   /**
    * Processes the XML response from the map request to extract suitable zones.
    */
-  function processResponse(xmlText, sectors, ent, minprc, maxprc, subsecciones) {
+  function processResponse(xmlText, sectors, ent, minprc, maxprc, subsecciones, desiredSectors=[]) {
     const parser = new DOMParser();
     const xmlDoc = parser.parseFromString(xmlText, "application/xml");
   
@@ -821,7 +863,16 @@ window.onload = () => {
   
     // Extract zones that meet the criteria.
     const suitableZones = [];
-    const zones = xmlDoc.querySelectorAll("path[data-available-seats]");
+    let customSelector = '';
+
+    if (desiredSectors.length === 0) {
+      customSelector = 'path[data-available-seats]'
+    } else {
+      customSelector = desiredSectors
+      .map(sector => `path[data-available-seats][data-zone-sector='${sector}']`)
+      .join(', ');
+    }
+    const zones = xmlDoc.querySelectorAll(customSelector);
     zones.forEach(zone => {
       const seats = parseInt(zone.getAttribute("data-available-seats"), 10);
       const minPrice = parseInt(zone.getAttribute("data-min-price"), 10);
