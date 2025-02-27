@@ -16,6 +16,7 @@ window.onload = () => {
     minPrice: null,
     maxPrice: null,
     amount: null,
+    ticketsType: 0,
     categories: [],
     sectors: [],
     isMadridista: false,
@@ -44,7 +45,7 @@ window.onload = () => {
       
      <form class="tickets view_selector">
         <span class="tickets tickets_title">Select View:</span>
-        <input type="radio" name="view" value="0" id="0"><label for="view_0">0 : ALL</label>
+        <input type="radio" name="view" value="0" id="0" checked><label for="view_0">0 : ALL</label>
         <input type="radio" name="view" value="F" id="F"><label for="view_F">F : FRONTAL</label>
         <input type="radio" name="view" value="L" id="L"><label for="view_L">L : LATERAL</label>
         <br>
@@ -52,29 +53,37 @@ window.onload = () => {
 
       <span class="tickets tickets_title">Кількість:</span>
       <div class="tickets_select" data-select="count">
-      <div class="tickets tickets_selector" data-value="1">1</div>
-      <div class="tickets tickets_selector" data-value="2">2</div>
-      <div class="tickets tickets_selector" data-value="3">3</div>
-      <div class="tickets tickets_selector" data-value="4">4</div>
-      <div class="tickets tickets_selector" data-value="5">5</div>
-      <div class="tickets tickets_selector tickets_selector_selected" data-value="6">6</div>
+        <div class="tickets tickets_selector" data-value="1">1</div>
+        <div class="tickets tickets_selector" data-value="2">2</div>
+        <div class="tickets tickets_selector" data-value="3">3</div>
+        <div class="tickets tickets_selector" data-value="4">4</div>
+        <div class="tickets tickets_selector" data-value="5">5</div>
+        <div class="tickets tickets_selector tickets_selector_selected" data-value="6">6</div>
       </div>
 
       <br>
-        <span class="tickets tickets_title">Категорії:</span>
+      <span class="tickets tickets_title">Категорії:</span>
       <div class="category_select" data-select="count">
-      <div class="tickets category_selector" data-value="C3">Category 3</div>
-      <div class="tickets category_selector" data-value="C2Behind">Category 2 Behind the Goal</div>
-      <div class="tickets category_selector" data-value="C2Long">Category 2 Long Side</div>
-      <div class="tickets category_selector" data-value="C1Upper">Category 1 Upper</div>
+        <div class="tickets category_selector" data-value="C3">Category 3</div>
+        <div class="tickets category_selector" data-value="C2Behind">Category 2 Behind the Goal</div>
+        <div class="tickets category_selector" data-value="C2Long">Category 2 Long Side</div>
+        <div class="tickets category_selector" data-value="C1Upper">Category 1 Upper</div>
         <div class="tickets category_selector" data-value="C1">Category 1</div>
-      <div class="tickets category_selector" data-value="C1Premium">Category 1 Premium</div>
+        <div class="tickets category_selector" data-value="C1Premium">Category 1 Premium</div>
       </div>
 
       <br>
 
+      <form class="tickets tickets-type_selector">
+        <span class="tickets tickets_title">Типи квитків:</span>
+        <input type="radio" name="view" value="0" id="DT" checked><label for="DT">Звичайні</label>
+        <input type="radio" name="view" value="1" id="PT"><label for="PT">Преміум</label>
+      </form>
+      
+      
+      <br>
 
-        <span class="tickets tickets_title">Додаткові сектори:</span>
+      <span class="tickets tickets_title">Додаткові сектори:</span>
       <div class="tickets tickets_data">
       </div>
       <button class="tickets tickets_button add_sector">+</button>
@@ -278,12 +287,20 @@ window.onload = () => {
       const selectionInput = container.querySelector('#selection');
     
       // Initialize form values
-      let radios = document.querySelectorAll('.view_selector > input[type="radio"]')
-      for (let radio of radios) {
+      let viewSelectoRadios = document.querySelectorAll('.view_selector > input[type="radio"]')
+      for (var radio of viewSelectoRadios) {
         if (settings.radio === radio.value) {
           radio.checked = true;
         }
       }
+
+      let ticketsTypeRadios = document.querySelectorAll('.tickets-type_selector > input[type="radio"]')
+      for (var radio of ticketsTypeRadios) {
+        if (settings.ticketsType === radio.value) {
+          radio.checked = true;
+        }
+      }
+      
       document.querySelector('input[name="minimum_price"]').value = settings.minPrice || '';
       document.querySelector('input[name="maximum_price"]').value = settings.maxPrice || '';
       document.querySelector('input[name="interval"]').value = settings.secondsToRestartIfNoTicketsFound || 15;
@@ -301,6 +318,7 @@ window.onload = () => {
             }
         }
       }
+
       if (settings.categories) {
         let categories = document.querySelectorAll('.category_selector');
 
@@ -320,29 +338,28 @@ window.onload = () => {
         tickets_data.appendChild(newBlockInput)
       }
       
-      // document.querySelector(`input[name="viewOption"][value="${settings.radio}"]`).checked = true;
-      // madridistaCheckbox.checked = settings.isMadridista;
-      // selectionInput.value = settings.selection || '1';
+      madridistaCheckbox.checked = settings.isMadridista;
+      selectionInput.value = settings.selection || '1';
       
-      // if (settings.isMadridista) {
-      //   madridistaFields.style.display = 'flex';
-      //   loginInput.value = settings.madridista?.login || '';
-      //   passwordInput.value = settings.madridista?.password || '';
-      // }
+      if (settings.isMadridista) {
+        madridistaFields.style.display = 'flex';
+        loginInput.value = settings.madridista?.login || '';
+        passwordInput.value = settings.madridista?.password || '';
+      }
     
-      // // Event listeners
-      // madridistaCheckbox.addEventListener('change', (e) => {
-      //   const isChecked = e.target.checked;
-      //   madridistaFields.style.display = isChecked ? 'flex' : 'none';
-      //   loginInput.disabled = !isChecked;
-      //   passwordInput.disabled = !isChecked;
+      // Event listeners
+      madridistaCheckbox.addEventListener('change', (e) => {
+        const isChecked = e.target.checked;
+        madridistaFields.style.display = isChecked ? 'flex' : 'none';
+        loginInput.disabled = !isChecked;
+        passwordInput.disabled = !isChecked;
         
-      //   if (!isChecked) {
-      //     loginInput.value = '';
-      //     passwordInput.value = '';
-      //     selectionInput.value = '1';
-      //   }
-      // });
+        if (!isChecked) {
+          loginInput.value = '';
+          passwordInput.value = '';
+          selectionInput.value = '1';
+        }
+      });
 
 
       let cancel_button = document.getElementById( 'tickets_cancel' );
@@ -351,6 +368,15 @@ window.onload = () => {
       let start_button = document.getElementById( 'tickets_start' );
       start_button.onclick = updateSettings;
 
+      let add_account = document.querySelector('.add_account')
+      add_account.onclick = function ( event ) {
+        if ( event.target.classList.contains( 'add_account' ) ) {
+
+          const newAccount = UI.addAccount();
+
+          tickets_data.appendChild(newAccount)
+        }
+      }
 
       var selectors = document.getElementsByClassName( 'tickets_selector' );
 
@@ -406,6 +432,36 @@ window.onload = () => {
       input.value = value;
       
       return input;
+    },
+
+    addAccount: function () {
+      let madridistaField = document.querySelector('.madridista-field');
+      // login
+      let login = document.createElement('input');
+      let loginLabel = document.createElement('label');
+      login.type = 'text';
+      login.name = 'login';
+      login.classList.add = "tickets_input";
+
+      loginLabel.setAttribute("for", "login");
+      loginLabel.textContent = "Login: ";
+
+      madridistaField.appendChild(loginLabel);
+      madridistaField.appendChild(login);
+      
+      // password 
+      let password = document.createElement('input');
+      let passwordLabel = document.createElement('label');
+      password.type = 'text';
+      password.name = 'password';
+      password.classList.add = "tickets_input";
+
+      passwordLabel.setAttribute("for", "password");
+      passwordLabel.textContent = "Password: ";
+
+      madridistaField.appendChild(passwordLabel);
+      madridistaField.appendChild(password);
+
     },
 
     select: function ( el ) {
@@ -494,10 +550,15 @@ window.onload = () => {
       };
     }
 
-    const selectedRadio = document.querySelector(
+    const selectedViewRadio = document.querySelector(
       '.view_selector > input[type="radio"]:checked'
     );
-    settings.radio = selectedRadio ? selectedRadio.value : null;
+    settings.radio = selectedViewRadio ? selectedViewRadio.value : null;
+    
+    const selectedTypeRadio = document.querySelector(
+      '.tickets-type_selector > input[type="radio"]:checked'
+    );
+    settings.ticketsType = selectedTypeRadio ? selectedTypeRadio.value : null;
 
     // settings.selection = parseInt(document.getElementById("selection").value);
     window.stopExecutionFlag = undefined;
@@ -621,7 +682,7 @@ window.onload = () => {
 
 
     try {
-      const mapUrl = `https://deportes.entradas.com/sports-web/map/svg/rma/${sessionId}/0?`;
+      const mapUrl = `https://deportes.entradas.com/sports-web/map/svg/rma/${sessionId}/${settings.ticketsType}?`;
       const mapResponse = await fetch(mapUrl);
       if (mapResponse.status === 403) {
         console.log('Error 403')
