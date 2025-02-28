@@ -634,15 +634,16 @@ window.onload = () => {
 
     settings.minPrice = minPrice !== "" ? parseInt(minPrice) : null;
     settings.maxPrice = maxPrice !== "" ? parseInt(maxPrice) : null;
-    settings.amount = amount !== "" ? amount : null;
     settings.secondsToRestartIfNoTicketsFound = parseInt(interval);
     settings.categories = categories;
     settings.sectors = sectors;
     settings.isMadridista = isMadridista;
 
+    let tempMadridista = []
+
 
     if (isMadridista) {
-      let tempMadridista = []
+      
       const madridista_fields = document.querySelectorAll('body > div.tickets.tickets_popup_wrapper div.madridista-fields');
       for (let i = 0; i < madridista_fields.length; i++) {
         field_login = madridista_fields[i].querySelector('input[name="login"]').value ? madridista_fields[i].querySelector('input[name="login"]').value : null;
@@ -656,6 +657,8 @@ window.onload = () => {
       }
       settings.madridista = tempMadridista;
     }
+
+    settings.amount = isMadridista ? tempMadridista.length : amount;
 
     const selectedViewRadio = document.querySelector(
       '.view_selector > input[type="radio"]:checked'
