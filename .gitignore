@@ -25,3 +25,5 @@ entradas_extension/node_modules
 entradas_extension/package-lock.json
 entradas_extension.rar
 j.js
+entradas_extension/src/content_scripts/index.html
+entradas_extension/src/content_scripts/index.js
