@@ -591,46 +591,46 @@ window.onload = () => {
     const isMadridista = document.querySelector('.authorization > input[type="radio"]:checked').value === "1";
 
     // Validation checks
-  if (minPrice === "" || maxPrice === "" || interval === "") {
-    alert("Будь ласка, заповніть всі поля.");
-    return;
-  }
-
-  if (minPrice < 0 || maxPrice < 0) {
-    alert("Ціна не може бути від'ємною.");
-    return;
-  }
-
-  if (parseInt(minPrice) > parseInt(maxPrice)) {
-    alert("Мінімальна ціна не може бути більшою за максимальну.");
-    return;
-  }
-
-  if (parseInt(minPrice) === 0 && parseInt(maxPrice) === 0) {
-    alert("Ціна не може бути 0.");
-    return;
-  }
-
-  if (isNaN(minPrice) || isNaN(maxPrice) || isNaN(amount) || isNaN(interval)) {
-    alert("Будь ласка, введіть правильні числові значення.");
-    return;
-  }
-
-    if (isMadridista) {
-      let madridista_fields = document.querySelectorAll('body > div.tickets.tickets_popup_wrapper div.madridista-fields');
-      if (madridista_fields.length === 0) {
-        alert("Має бути принаймні один основний обліковий запис, якщо авторизація увімкнена.");
-        return;
-      }
-      for (let i = 0; i < madridista_fields.length; i++) {
-        const field_login = madridista_fields[i].querySelector('input[name="login"]').value;
-        const field_password = madridista_fields[i].querySelector('input[name="password"]').value;
-        if (field_login === "" || field_password === "") {
-          alert("Будь ласка, заповніть всі поля облікового запису.");
-          return;
-        }
-      }
+    if (minPrice === "" || maxPrice === "" || interval === "") {
+      alert("Будь ласка, заповніть всі поля.");
+      return;
     }
+
+    if (minPrice < 0 || maxPrice < 0) {
+      alert("Ціна не може бути від'ємною.");
+      return;
+    }
+
+    if (parseInt(minPrice) > parseInt(maxPrice)) {
+      alert("Мінімальна ціна не може бути більшою за максимальну.");
+      return;
+    }
+
+    if (parseInt(minPrice) === 0 && parseInt(maxPrice) === 0) {
+      alert("Ціна не може бути 0.");
+      return;
+    }
+
+    if (isNaN(minPrice) || isNaN(maxPrice) || isNaN(amount) || isNaN(interval)) {
+      alert("Будь ласка, введіть правильні числові значення.");
+      return;
+    }
+
+  if (isMadridista) {
+    let madridista_fields = document.querySelectorAll('body > div.tickets.tickets_popup_wrapper div.madridista-fields');
+    let mainAccountExists = false;
+
+    const field_login = madridista_fields[0].querySelector('input[name="login"]').value;
+    const field_password = madridista_fields[0].querySelector('input[name="password"]').value;
+    if (field_login !== "" && field_password !== "") {
+      mainAccountExists = true;
+    }
+
+    if (!mainAccountExists) {
+      alert("Має бути принаймні один основний обліковий запис, якщо авторизація увімкнена.");
+      return;
+    }
+  }
 
     settings.minPrice = minPrice !== "" ? parseInt(minPrice) : null;
     settings.maxPrice = maxPrice !== "" ? parseInt(maxPrice) : null;
