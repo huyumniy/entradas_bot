@@ -969,13 +969,11 @@ window.onload = () => {
 
   function displayTextInBottomLeftCorner(text) {
     const existingTextElement = document.getElementById('bottomLeftText');
-
-    // Функція для форматування чисел менше 10 з додаванням "0" спереду
+  
     function formatNumber(num) {
       return num < 10 ? `0${num}` : num;
     }
-
-    // Функція для отримання поточного часу у форматі "ГГ:ХХ:СС"
+  
     function getCurrentTime() {
       const now = new Date();
       const hours = formatNumber(now.getHours());
@@ -983,29 +981,83 @@ window.onload = () => {
       const seconds = formatNumber(now.getSeconds());
       return `${hours}:${minutes}:${seconds}`;
     }
-
+  
     if (!existingTextElement) {
-      // Створюємо елемент, якщо він ще не існує
       const newTextElement = document.createElement('div');
       newTextElement.id = 'bottomLeftText';
-
-      // Стилі для новоствореного елементу
-      newTextElement.style.position = 'absolute';
-      newTextElement.style.bottom = '0';
-      newTextElement.style.left = '0';
+      newTextElement.style.display = 'block';
       newTextElement.style.padding = '10px';
       newTextElement.style.backgroundColor = '#000';
       newTextElement.style.color = '#fff';
       newTextElement.style.fontFamily = 'Arial, sans-serif';
-
-      // Додаємо новостворений елемент до body
-      document.body.appendChild(newTextElement);
-
-      // Виводимо текст та час
+      
+      let bottomLeftInfo = document.getElementById('bottomLeftContainer');
+      if (bottomLeftInfo) {
+        bottomLeftInfo.appendChild(newTextElement);
+      } else {
+        let bottomLeftInfo = document.createElement('div');
+        bottomLeftInfo.id = 'bottomLeftContainer';
+        bottomLeftInfo.style.display = 'flex';
+        bottomLeftInfo.style.gap = '5px';
+        bottomLeftInfo.style.flexDirection = 'column';
+        bottomLeftInfo.style.position = 'absolute';
+        bottomLeftInfo.style.maxWidth = '50%';
+        bottomLeftInfo.style.bottom = '0';
+        bottomLeftInfo.style.left = '0';
+        document.body.appendChild(bottomLeftInfo);
+        bottomLeftInfo.appendChild(newTextElement);
+      }
+  
       newTextElement.textContent = `${text} - ${getCurrentTime()}`;
     } else {
-      // Оновлюємо текст та час у вже існуючому елементі
       existingTextElement.textContent = `${text} - ${getCurrentTime()}`;
+    }
+  }
+
+  function displayResponseInfo(message) {
+    const existingInfoElement = document.getElementById('bottomLeftInfo');
+  
+    function formatNumber(num) {
+      return num < 10 ? `0${num}` : num;
+    }
+  
+    function getCurrentTime() {
+      const now = new Date();
+      const hours = formatNumber(now.getHours());
+      const minutes = formatNumber(now.getMinutes());
+      const seconds = formatNumber(now.getSeconds());
+      return `${hours}:${minutes}:${seconds}`;
+    }
+  
+    if (!existingInfoElement) {
+      const newInfoElement = document.createElement('div');
+      newInfoElement.id = 'bottomLeftInfo';
+      newInfoElement.style.display = 'block';
+      newInfoElement.style.padding = '10px';
+      newInfoElement.style.backgroundColor = '#000';
+      newInfoElement.style.color = '#fff';
+      newInfoElement.style.fontFamily = 'Arial, sans-serif';
+  
+      let bottomLeftInfo = document.getElementById('bottomLeftContainer');
+      if (bottomLeftInfo) {
+        bottomLeftInfo.appendChild(newInfoElement);
+      } else {
+        let bottomLeftInfo = document.createElement('div');
+        bottomLeftInfo.id = 'bottomLeftContainer';
+        bottomLeftInfo.style.display = 'flex';
+        bottomLeftInfo.style.gap = '5px';
+        bottomLeftInfo.style.flexDirection = 'column';
+        bottomLeftInfo.style.maxWidth = '50%';
+        bottomLeftInfo.style.position = 'absolute';
+        bottomLeftInfo.style.bottom = '0';
+        bottomLeftInfo.style.left = '0';
+        document.body.appendChild(bottomLeftInfo);
+        bottomLeftInfo.appendChild(newInfoElement);
+      }
+  
+      newInfoElement.textContent = `${message} - ${getCurrentTime()}`;
+    } else {
+      existingInfoElement.textContent = `${message} - ${getCurrentTime()}`;
     }
   }
   
@@ -1104,7 +1156,8 @@ window.onload = () => {
         });
       }
       
-      console.log("Prebook success for zone", zoneId, prebookResponse);
+      console.log("Prebook info for zone", zoneId, prebookResponse);
+      displayResponseInfo(prebookResponse.message);
       if (
         prebookResponse.message.includes("Lo sentimos ,  el captcha no se ha validado") ||
         prebookResponse.message.includes("Sorry,captcha not validated")
@@ -1125,6 +1178,7 @@ window.onload = () => {
         return [prebookResponse, zoneId];
       }
     } catch (error) {
+      
       console.error("Prebook failed for zone", zoneId, error);
     }
     return null;
