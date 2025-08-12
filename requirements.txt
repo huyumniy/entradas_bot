@@ -36,6 +36,7 @@ pyshadow==0.0.5
 PySocks==1.7.1
 python-dotenv==1.0.1
 pytweening==1.2.0
+redis==6.4.0
 requests==2.32.3
 selenium==4.27.1
 slack_sdk==3.33.1
