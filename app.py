@@ -24,6 +24,7 @@ from selenium.webdriver.support.ui import Select
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support import expected_conditions as EC
+import redis
 import json
 # from webdriver_manager.core.logger import __logger as wdm_logger
 init(autoreset=True)
@@ -303,6 +304,23 @@ def main(initialUrl, isSlack, browsersAmount, isVpn, proxyList):
         thread.join()
 
 
+
+def svg_click(driver, element):
+    try:
+        driver.execute_script("""
+        var evt = new MouseEvent('click', {
+            bubbles: true,
+            cancelable: true,
+            view: window
+        });
+        arguments[0].dispatchEvent(evt);
+        """, element)
+        return True
+    except Exception as e:
+        print("svg_click error:", e)
+        return False
+
+
 def get_indexeddb_data(driver, db_name, store_name):
     script = f"""
     var callback = arguments[arguments.length - 1];  // Last argument is the callback for async script
@@ -403,6 +421,13 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
     except Exception as e:
         print(f"Error handling tabs: {e}")
 
+    pool = redis.ConnectionPool(host='localhost', port=6380, db=0)
+    r = None
+    try:
+        r = redis.Redis(connection_pool=pool)
+    except Exception as e:
+        print('[ERROR] Could not connect to redis')
+    
     driver.get('https://nopecha.com/setup#sub_1QsSuQCRwBwvt6ptjP0yralq|keys=|enabled=true|disabled_hosts=|hcaptcha_auto_open=true|hcaptcha_auto_solve=false|hcaptcha_solve_delay=true|hcaptcha_solve_delay_time=3000|recaptcha_auto_open=true|recaptcha_auto_solve=true|recaptcha_solve_delay=true|recaptcha_solve_delay_time=1000|funcaptcha_auto_open=true|funcaptcha_auto_solve=false|funcaptcha_solve_delay=true|funcaptcha_solve_delay_time=0|awscaptcha_auto_open=true|awscaptcha_auto_solve=false|awscaptcha_solve_delay=true|awscaptcha_solve_delay_time=0|turnstile_auto_solve=false|turnstile_solve_delay=true|turnstile_solve_delay_time=30000|perimeterx_auto_solve=false|perimeterx_solve_delay=true|perimeterx_solve_delay_time=1000|textcaptcha_auto_solve=false|textcaptcha_solve_delay=true|textcaptcha_solve_delay_time=0|textcaptcha_image_selector=.captcha-code|textcaptcha_input_selector=#solution|geetest_auto_open=false|geetest_auto_solve=false|geetest_solve_delay=true|geetest_solve_delay_time=1000|lemincaptcha_auto_open=false|lemincaptcha_auto_solve=false|lemincaptcha_solve_delay=true|lemincaptcha_solve_delay_time=1000|recaptcha_solve_method=Image')
     if proxyList:
         driver.get('chrome://extensions/')
@@ -568,7 +593,7 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
 
             while True:
                 try:
-                    r = driver.title
+                    title = driver.title
                     break
                 except:
                     try:
@@ -592,7 +617,7 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                 con_mad = None
                 acom = None
                 result = driver.execute_script("return window.stopExecutionFlag;")
-
+                
                 if result:
                     time.sleep(5)
                     continue
@@ -730,39 +755,68 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                     pass
                 
                 bnms = []
-
-                for b in driver.find_elements(By.XPATH, '//*[@id="regular-price-list"]/li'):
-                    dp = b.get_attribute('data-price')
-                    dpd = b.get_attribute('data-price-desc')
-                    try:
-                        if int(dp) in range(minprc, maxprc+1):
-                            bnms.append(dpd)
-                            b.click()
-                    except:
-                        pass
-                vsel = '|'.join([f'//*[@data-price-desc="{bnm}"]/tspan' for bnm in bnms])
-                try:
-                    ensure_check_elem(driver, 'text > tspan[class="newZoneClick"]', methode=By.CSS_SELECTOR, tmt=4)
-                except:
-                    print('No tickets')
+                available_zones = check_for_elements(driver, "//*[local-name()='path' and @data-price-desc and @data-available-seats]", xpath=True)
+                if not available_zones:
+                    print("No tickets")
                     continue
-                no_zones = True
-                while no_zones:
-                    active_zones = driver.find_elements(
-                            By.CSS_SELECTOR, 'text > tspan[class="newZoneClick"]')
-                    if len(active_zones) < 1: no_zones = False
+                for b in available_zones:
+                    data_min_price = b.get_attribute('data-min-price')
+                    data_max_price = b.get_attribute('data-max-price')
+                    data_price_description = b.get_attribute('data-price-desc')
+                    data_available_seats = b.get_attribute('data-available-seats')
                     try:
-                        zns = choice(active_zones).click()
-                        break
-                    except:
-                        time.sleep(.6)
-                    try:
-                        driver.find_element(
-                            By.XPATH, '//*[@id="onetrust-accept-btn-handler"]').click()
-                        driver.execute_script("document.querySelector('div.onetrust-pc-dark-filter.ot-fade-in').remove()")
+                        if int(data_min_price) >= minprc and int(data_max_price) <= maxprc+1:
+                            bnms.append(data_price_description)
                     except:
                         pass
-                if not no_zones: continue
+                vsel = '|'.join([f"//*[local-name()='path' and @data-price-desc='{bnm}' and @data-available-seats]" for bnm in bnms])
+                no_zones = True
+                active_zones = check_for_elements(driver, vsel, xpath=True)
+                print('active_zones', len(active_zones))
+                if len(active_zones) < 1: 
+                    print('no active zones')
+                    continue
+                try:
+                    if not r:
+                        print('No redis initialized, choosing random zone')
+                        random_zone = random.choice(active_zones)
+                        svg_click(driver, zone)
+                    else:
+                        for zone in active_zones:
+                            zone_id = zone.get_attribute('id')
+                            data_available_seats = zone.get_attribute("data-available-seats")
+                            if not zone_id or not data_available_seats:
+                                continue
+                            print('zone_id', zone_id, 'data_available_seats', data_available_seats)
+                            # trying to find zone id in redis
+                            redis_seat_amount = r.get(zone_id)
+                            print('redis_seat_amount', redis_seat_amount)
+                            # no such id in redis, creating new one with ttl 10 min
+                            if not redis_seat_amount: 
+                                print('no such id in redis, creating new one with ttl 10 min')
+                                r.set(zone_id, data_available_seats, 600)
+                                svg_click(driver, zone)
+                                break
+                            # data still exists in redis, moving to another zone.
+                            elif redis_seat_amount and int(redis_seat_amount) == int(data_available_seats):
+                                print('data still exists in redis, moving to another zone.')
+                                continue
+                            # data in redis differs from current data, updating ttl and value and clicking to that zone
+                            elif redis_seat_amount and int(redis_seat_amount) != int(data_available_seats):
+                                print('data in redis differs from current data, updating ttl and value and clicking to that zone')
+                                r.set(zone_id, data_available_seats, 600)
+                                svg_click(driver, zone)
+                                break
+
+                except Exception as e:
+                    print("working with zones error:", e)
+                    time.sleep(.6)
+                try:
+                    driver.find_element(
+                        By.XPATH, '//*[@id="onetrust-accept-btn-handler"]').click()
+                    driver.execute_script("document.querySelector('div.onetrust-pc-dark-filter.ot-fade-in').remove()")
+                except: pass
+                if not active_zones: continue
                 tk_niet = True
 
                 max_attempts = 5
@@ -813,18 +867,17 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                 if list(set(sts)) == list(set(asientos)) and (total>minprc*ent and maxprc*ent>total):
                     ensure_check_elem(driver, '//*[@id="boton-compra"]', click=True)
                     try:
-                        ensure_check_elem(driver, 
-                            '//*[@id="onetrust-accept-btn-handler"]', tmt=20, click=True)
-                        driver.execute_script("document.querySelector('div.onetrust-pc-dark-filter.ot-fade-in').remove()")
-                    except: pass
-                    try:
-                        u = driver.find_element(
-                            By.XPATH, '//*[@class="nominative-row-title"]')
-                        data_play, fs = sf.read('noti.wav', dtype='float32')  
-                        sd.play(data_play, fs)
-                        status = sd.wait()
+                        u = wait_for_element(driver, '//*[@class="nominative-row-title"]', xpath=True)
+                        
+                        try:
+                            data_play, fs = sf.read('noti.wav', dtype='float32')  
+                            sd.play(data_play, fs)
+                            sd.wait()
+                        except Exception as audio_err:
+                            print("Audio playback error:", audio_err)
                         seats = None
                         driver.execute_script("window.stopExecutionFlag = true;")
+
                         if isSlack:
                             match = check_for_element(driver, 'div[class="event-name"]')
                             quantity = check_for_element(driver, 'label[id="numero-entradas"]')
@@ -857,29 +910,7 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                                 "user_agent": ua
                             }
                             post_request(data)
-                        restart = True
-                        while restart:
-                            try:
-                                alert = WebDriverWait(driver, 1).until(EC.alert_is_present())
-                                # You can decide to do nothing here, leaving the alert open
-                            except NoAlertPresentException:
-                                pass  # No alert to handle, continue the loop
-                            try:
-                                result = driver.execute_script("return window.stopExecutionFlag;")
-                                if result:
-                                    result = bool(result)
-                                if not result:
-                                    driver.back()
-                                    WebDriverWait(driver, 5).until(
-                                        lambda driver: driver.execute_script("return document.readyState") == "complete"
-                                    )
-                                    driver.refresh()
-                                    restart = False
-                            except (NoAlertPresentException, TimeoutException):
-                                # No alert or timeout occurred; continue the loop
-                                pass
-                            except:pass
-                            time.sleep(5)
+                        
                         break
                     except Exception as e:
                         print(e)
