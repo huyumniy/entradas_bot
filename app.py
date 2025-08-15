@@ -24,11 +24,17 @@ from selenium.webdriver.support.ui import Select
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 import redis
 import json
+
 # from webdriver_manager.core.logger import __logger as wdm_logger
 init(autoreset=True)
 entrada = "https://www.entradas.com/artist/real-madrid-c-f/"
+
+pool = redis.ConnectionPool(host='localhost', port=6380, db=0)
+r = redis.Redis(connection_pool=pool)
+    
 
 class ProxyExtension:
     manifest_json = """
@@ -355,6 +361,7 @@ def get_indexeddb_data(driver, db_name, store_name):
     
 
 def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[]):
+    global r
     ua = UserAgent(platforms='mobile')
     random_ua = ua.random
     while 'iPhone' not in str(random_ua):
@@ -421,13 +428,6 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
     except Exception as e:
         print(f"Error handling tabs: {e}")
 
-    pool = redis.ConnectionPool(host='localhost', port=6380, db=0)
-    r = None
-    try:
-        r = redis.Redis(connection_pool=pool)
-    except Exception as e:
-        print('[ERROR] Could not connect to redis')
-    
     driver.get('https://nopecha.com/setup#sub_1QsSuQCRwBwvt6ptjP0yralq|keys=|enabled=true|disabled_hosts=|hcaptcha_auto_open=true|hcaptcha_auto_solve=false|hcaptcha_solve_delay=true|hcaptcha_solve_delay_time=3000|recaptcha_auto_open=true|recaptcha_auto_solve=true|recaptcha_solve_delay=true|recaptcha_solve_delay_time=1000|funcaptcha_auto_open=true|funcaptcha_auto_solve=false|funcaptcha_solve_delay=true|funcaptcha_solve_delay_time=0|awscaptcha_auto_open=true|awscaptcha_auto_solve=false|awscaptcha_solve_delay=true|awscaptcha_solve_delay_time=0|turnstile_auto_solve=false|turnstile_solve_delay=true|turnstile_solve_delay_time=30000|perimeterx_auto_solve=false|perimeterx_solve_delay=true|perimeterx_solve_delay_time=1000|textcaptcha_auto_solve=false|textcaptcha_solve_delay=true|textcaptcha_solve_delay_time=0|textcaptcha_image_selector=.captcha-code|textcaptcha_input_selector=#solution|geetest_auto_open=false|geetest_auto_solve=false|geetest_solve_delay=true|geetest_solve_delay_time=1000|lemincaptcha_auto_open=false|lemincaptcha_auto_solve=false|lemincaptcha_solve_delay=true|lemincaptcha_solve_delay_time=1000|recaptcha_solve_method=Image')
     if proxyList:
         driver.get('chrome://extensions/')
@@ -490,55 +490,6 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
     print(Fore.GREEN + f"Thread {thread_number}: Successfully started!\n")
     while True:
         try:
-            # madridista = input(
-            #     'Madridista [Y:N] (default is N):').lower().strip() == "y"
-            # if madridista:
-            #     numero_mad=input('Número de Socio/Madridista Premium: ').strip()
-            #     con_mad=input('Contraseña: ').strip()
-            #     while True:
-            #         try:
-            #             acom = int(input('Acompañantes : '))
-            #             try:
-            #                 if acom in range(10):
-            #                     break
-            #             except:
-            #                 raise Exception('INVLD 1')
-            #         except:
-            #             print('Please insert correct values')
-            # while True:
-            #     try:
-            #         ent = int(input('NUM ENTRADAS : '))
-            #         try:
-            #             if ent in range(1, 7):
-            #                 break
-            #         except:
-            #             raise Exception('INVLD 2')
-            #     except:
-            #         print('Please insert correct values')
-            # while True:
-            #     try:
-            #         maxprc = int(input('Max Price: '))
-            #         break
-            #     except:
-            #         print('Please insert correct values')
-            # while True:
-            #     try:
-            #         minprc = int(input('Min Price: '))
-            #         break
-            #     except:
-            #         print('Please insert correct values')
-            # while True:
-            #     try:
-            #         ar = input('F : FRONTAL // L: LATERAL //0 : ALL : ').lower().strip()
-            #         if ar in ['f', 'l', '0']:
-            #             break
-            #         else:
-            #             raise Exception('NOT FL0')
-            #     except:
-            #         print('Please insert correct values')
-
-            # driver.get(lnks[id1])
-            # ensure_check_elem(driver,'//button[./span[contains(text(),"ar en")]]', click=True)
             no_stadium = True
             ticketBotSettings = None
             while no_stadium:
@@ -602,6 +553,7 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                         pass
 
             while True:
+
                 # Fetch data from IndexedDB or localStorage
                 try:
                     ticketBotSettings = json.loads(get_indexeddb_data(driver, 'TicketBotDB', 'settings'))
@@ -736,6 +688,9 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                         driver.execute_script("document.querySelector('div.onetrust-pc-dark-filter.ot-fade-in').remove()")
                     except:
                         pass
+                    # FOUND: #sub-rafaelsalgado #sub-conchaespina
+                    # LATERAL: #sub-castellana #sub-padredamian
+                    areas_holder = ''
                     if 'l' == ar.lower(): sectors = check_for_elements(driver, "g[data-name^='Lateral'][class='sector']")
                     elif 'f' == ar.lower(): sectors = check_for_elements(driver, "g[data-name^='Fondo'][class='sector']")
                     else: sectors = check_for_elements(driver, "g[data-name][class='sector']")
@@ -754,8 +709,30 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                 except:
                     pass
                 
+                define_side = wait_for_element(driver, "#regular-zone-title")
+                print(define_side)
+                if not define_side:
+                    print('Не вдалося впізнати сторону стадіону.')
+                    continue
+                side_xpath = ""
+                if define_side.text.lower() == "fondo norte":
+                    side_xpath+= '//*[@id="sub-rafaelsalgado"]'
+                if define_side.text.lower() == "lateral este":
+                    side_xpath+= '//*[@id="sub-padredamian"]'
+                if define_side.text.lower() == "fondo sur":
+                    side_xpath+= '//*[@id="sub-conchaespina"]'
+                if define_side.text.lower() == "lateral oeste":
+                    side_xpath+= '//*[@id="sub-castellana"]'
+
+                print(side_xpath, "side_xpath")
+                print(side_xpath+"/*[local-name()='path' and @data-price-desc and @data-available-seats]")
+                
+                if not side_xpath:
+                    print('Не вдалося впізнати сторону стадіону.')
+                    continue
+                
                 bnms = []
-                available_zones = check_for_elements(driver, "//*[local-name()='path' and @data-price-desc and @data-available-seats]", xpath=True)
+                available_zones = check_for_elements(driver, side_xpath+"/*[local-name()='path' and @data-price-desc and @data-available-seats]", xpath=True)
                 if not available_zones:
                     print("No tickets")
                     continue
@@ -769,8 +746,9 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                             bnms.append(data_price_description)
                     except:
                         pass
-                vsel = '|'.join([f"//*[local-name()='path' and @data-price-desc='{bnm}' and @data-available-seats]" for bnm in bnms])
+                vsel = '|'.join([side_xpath+f"/*[local-name()='path' and @data-price-desc='{bnm}' and @data-available-seats]" for bnm in bnms])
                 no_zones = True
+
                 active_zones = check_for_elements(driver, vsel, xpath=True)
                 print('active_zones', len(active_zones))
                 if len(active_zones) < 1: 
