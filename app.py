@@ -167,6 +167,43 @@ def ensure_check_elem(driver, selector, methode=By.XPATH, tmt=20, click=False):
     return var
 
 
+def change_proxy(driver):
+    try:
+        driver.get('chrome://extensions/')
+        js_code = """
+            const callback = arguments[0];
+            chrome.management.getAll((extensions) => {
+                callback(extensions);
+            });
+        """
+        extensions = driver.execute_async_script(js_code)
+        filtered_extensions = [extension for extension in extensions if "BP Proxy Switcher" in extension['name']]
+
+        vpn_id = [extension['id'] for extension in filtered_extensions if 'id' in extension][0]
+        vpn_url = f'chrome-extension://{vpn_id}/popup.html'
+        print(vpn_url)
+        driver.get(vpn_url)
+
+        selectProxy = wait_for_element(driver, "//*[@id='proxySelectDiv']", xpath=True)
+        selectProxy.click()
+        time.sleep(2)
+        
+        proxy_switch_list = check_for_elements(driver, '#proxySelectDiv > div > div > ul > li')
+        if len(proxy_switch_list) == 3:
+            driver.execute_script("arguments[0].scrollIntoView();", proxy_switch_list[2])
+            proxy_switch_list[2].click()
+        else: 
+            certain_proxy = proxy_switch_list[random.randint(2, len(proxy_switch_list)-1)]
+            driver.execute_script("arguments[0].scrollIntoView();", certain_proxy)
+            certain_proxy.click()
+        time.sleep(5)
+        
+        return True
+    except Exception as e:
+        print("change_proxy function error:", e)
+        return False
+
+
 def parse_data_from_file(file_path):
     with open(file_path, 'r') as file:
         lines = file.readlines()
@@ -358,7 +395,7 @@ def get_indexeddb_data(driver, db_name, store_name):
     }};
     """
     return driver.execute_async_script(script)
-    
+
 
 def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[]):
     global r
@@ -376,7 +413,7 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
     options.add_argument("--disable-site-isolation-trials")
     options.add_argument('--ignore-certificate-errors')
     options.add_argument('--lang=EN')
-
+    
     # Set the paths for extensions
     nopecha_path = os.path.join(os.getcwd(), 'NopeCHA')
     entradas_ext_path = os.path.join(os.getcwd(), 'entradas_extension')
@@ -400,6 +437,7 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
         "profile.password_manager_enabled": False
     }
     options.add_experimental_option("prefs", prefs)
+    options.set_capability("goog:loggingPrefs", {"performance": "ALL"})
 
     # Specify the path to chromedriver in the current working directory
     chromedriver_path = os.path.join(os.getcwd(), 'chromedriver.exe')
@@ -427,7 +465,7 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
         driver.switch_to.window(tabs[0])
     except Exception as e:
         print(f"Error handling tabs: {e}")
-
+    driver.execute_cdp_cmd("Network.enable", {})
     driver.get('https://nopecha.com/setup#sub_1QsSuQCRwBwvt6ptjP0yralq|keys=|enabled=true|disabled_hosts=|hcaptcha_auto_open=true|hcaptcha_auto_solve=false|hcaptcha_solve_delay=true|hcaptcha_solve_delay_time=3000|recaptcha_auto_open=true|recaptcha_auto_solve=true|recaptcha_solve_delay=true|recaptcha_solve_delay_time=1000|funcaptcha_auto_open=true|funcaptcha_auto_solve=false|funcaptcha_solve_delay=true|funcaptcha_solve_delay_time=0|awscaptcha_auto_open=true|awscaptcha_auto_solve=false|awscaptcha_solve_delay=true|awscaptcha_solve_delay_time=0|turnstile_auto_solve=false|turnstile_solve_delay=true|turnstile_solve_delay_time=30000|perimeterx_auto_solve=false|perimeterx_solve_delay=true|perimeterx_solve_delay_time=1000|textcaptcha_auto_solve=false|textcaptcha_solve_delay=true|textcaptcha_solve_delay_time=0|textcaptcha_image_selector=.captcha-code|textcaptcha_input_selector=#solution|geetest_auto_open=false|geetest_auto_solve=false|geetest_solve_delay=true|geetest_solve_delay_time=1000|lemincaptcha_auto_open=false|lemincaptcha_auto_solve=false|lemincaptcha_solve_delay=true|lemincaptcha_solve_delay_time=1000|recaptcha_solve_method=Image')
     if proxyList:
         driver.get('chrome://extensions/')
@@ -472,14 +510,7 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
         driver.execute_script("arguments[0].scrollIntoView();", ok_button)
         ok_button.click()
         time.sleep(3)
-        if not isVpn:
-            proxy_switch_list = driver.find_elements(By.CSS_SELECTOR, '#proxySelectDiv > div > div > ul > li')
-            if len(proxy_switch_list) == 3: proxy_switch_list[2].click()
-            else: proxy_switch_list[random.randint(2, len(proxy_switch_list))-1].click()
-            time.sleep(5)
-        if isVpn:
-            check_for_element(driver, '#proxySelectDiv', click=True)
-            time.sleep(2)
+        change_proxy(driver)
         proxy_auto_reload_checkbox = driver.find_element(By.XPATH, '//*[@id="autoReload"]')
         driver.execute_script("arguments[0].scrollIntoView();", proxy_auto_reload_checkbox)
         proxy_auto_reload_checkbox.click()
@@ -493,6 +524,12 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
             no_stadium = True
             ticketBotSettings = None
             while no_stadium:
+                is_403 = check_for_element(driver, '//h1[contains(text(), "Access")]|//h1[contains(text(), "403")]', xpath=True)
+                current_url = driver.current_url
+                if is_403:
+                    print('403 error appeared, changing proxy')
+                    change_proxy(driver)
+                    driver.get(current_url)
                 window_handles = driver.window_handles  # Fetch current window handles
                 for index, handle in enumerate(window_handles):
                     try:
@@ -551,9 +588,14 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                         driver.switch_to.window(driver.window_handles[0])
                     except:
                         pass
-
-            while True:
-
+            while True: 
+                driver.refresh()
+                is_403 = check_for_element(driver, '//h1[contains(text(), "Access")]|//h1[contains(text(), "403")]', xpath=True)
+                current_url = driver.current_url
+                if is_403:
+                    print('403 error appeared, changing proxy')
+                    change_proxy(driver)
+                    driver.get(current_url)
                 # Fetch data from IndexedDB or localStorage
                 try:
                     ticketBotSettings = json.loads(get_indexeddb_data(driver, 'TicketBotDB', 'settings'))
@@ -748,7 +790,10 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                         pass
                 vsel = '|'.join([side_xpath+f"/*[local-name()='path' and @data-price-desc='{bnm}' and @data-available-seats]" for bnm in bnms])
                 no_zones = True
-
+                is_active_zones = wait_for_element(driver, vsel, xpath=True)
+                if not is_active_zones:
+                    print('no active zones found')
+                    continue
                 active_zones = check_for_elements(driver, vsel, xpath=True)
                 print('active_zones', len(active_zones))
                 if len(active_zones) < 1: 
