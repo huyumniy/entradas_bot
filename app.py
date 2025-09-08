@@ -589,7 +589,8 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                     except:
                         pass
             while True: 
-                driver.refresh()
+                change_step = check_for_element(driver, '.change-step', click=True)
+                if not change_step: driver.refresh()
                 is_403 = check_for_element(driver, '//h1[contains(text(), "Access")]|//h1[contains(text(), "403")]', xpath=True)
                 current_url = driver.current_url
                 if is_403:
@@ -609,20 +610,17 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                 ar = ticketBotSettings['radio']
                 numero_mad = None
                 con_mad = None
-                acom = None
                 result = driver.execute_script("return window.stopExecutionFlag;")
                 
                 if result:
                     time.sleep(5)
                     continue
 
-                if ticketBotSettings['madridista']:
-                    numero_mad = ticketBotSettings['madridista'].get('login')
-                    con_mad = ticketBotSettings['madridista'].get('password')
-                    acom = str(ticketBotSettings['selection'])
+                if not ticketBotSettings['madridista'] or len(ticketBotSettings['madridista']) < 1:
+                    print('[DEBUG] no madridista profiles were found')
+                    time.sleep(5)
+                    continue
 
-                # div[class="modal fullscreen"] #message-alert
-                # driver.delete_all_cookies()
                 try:
                     driver.execute_script("document.querySelector('#message-alert').remove()")
                     driver.execute_script("document.querySelector('div[class=\"modal fullscreen\"]').remove()")
@@ -636,13 +634,6 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                     print('Can\'t find stadium page. Waiting for 30 sec.')
                     time.sleep(30)
                     continue
-                    # try:
-                    #     ensure_check_elem(driver, '//*[contains(text(),"nible a par")]',tmt=1)
-                    #     print('No sale')
-                    #     break
-                    # except:
-                    #     print('ISK0')
-                    #     break
                 match_data = True
                 while match_data:
                     time.sleep(2)
@@ -657,36 +648,49 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                     except:
                         pass
                     if madridista and not check_for_element(driver, '#resumeMembers tbody tr'):
-                        # try:
-                        #     ensure_check_elem(driver, '//*[@id="select-ticket-container"]//a[contains(text(),"ista Pr")]',click=True)
-                        #     ensure_check_elem(driver, '//*[@id="nsocioG"]',click=True).send_keys(numero_mad)
-                        #     ensure_check_elem(driver, '//*[@id="nsocioG"]',click=True).send_keys(con_mad)
-                        #     Select(check_for_element(driver, '//*[@id="num-entradas"]', xpath=True)).select_by_index(ent)
-                        # except:
-                        #     pass
+                        member_login_form_selector = 'li[id="seleccion-entradas"][class="active"] div[name="socios-login"]'
                         try:
-                            is_member_field = check_for_element(driver, 'div[id="member-login-socios"][style="display: block;"]')
-                            if not is_member_field: 
-                                check_for_element(driver, '#socio-no-abonado', click=True)
+                            for idx, account in enumerate(ticketBotSettings['madridista']):
+                                numero_mad = account.get('login')
+                                con_mad = account.get('password')
+                                is_member_field = check_for_element(driver, 'div[id="member-login-socios"][style="display: block;"]')
+                                if not is_member_field: 
+                                    check_for_element(driver, '#socio-no-abonado', click=True)
+                                    check_for_element(driver, '#preguntaMasSociosEnlace', click=True)
+                                    time.sleep(1)
+                                print('MADRIDISTA DATA', numero_mad, con_mad)
                                 time.sleep(1)
-                            login_input = check_for_element(driver, '#nsocio', click=True)
-                            login_input.clear()
-                            login_input.send_keys(numero_mad)
-                            password_input = check_for_element(driver, '#pinsocio', click=True)
-                            password_input.clear()
-                            password_input.send_keys(con_mad)
-                            try:
-                                num_friends_selector = check_for_element(driver, '#num-friends')
-                                Select(num_friends_selector).select_by_visible_text(acom)
-                            except: print("Can't select #num-friends tag")
-                            check_for_element(driver, '#valida-socio', click=True)
-                            erorr_message = wait_for_element(driver, 'div[style="width:500px;"][class="error message"]')
-                            time.sleep(2)
-                            if erorr_message: match_data = False
+                                login_selector = '#nsocio' if idx == 0 else f'{member_login_form_selector} input[id^="nsocio"]'
+                                login_input = check_for_element(driver, login_selector, click=True)
+                                login_input.clear()
+                                login_input.send_keys(numero_mad)
+                                password_selector = '#pinsocio' if idx == 0 else f'{member_login_form_selector} input[id^="pinsocio"]'
+                                password_input = check_for_element(driver, password_selector, click=True)
+                                password_input.clear()
+                                password_input.send_keys(con_mad)
+                                validate_button_selector = '#valida-socio' if idx == 0 else f'{member_login_form_selector} input[id^="valida-socio"]'
+                                check_for_element(driver, validate_button_selector, click=True)
+                                erorr_message = wait_for_element(driver, 'div[style="width:500px;"][class="error message"]', timeout=5)
+                                if erorr_message: 
+                                    print('Щось пішло не так при введені madridista, перевірти правильність введення та спробуйте змінити проксі.')
+                                    match_data = False
+                                    break
+                                time.sleep(2)
+                                
+                                
                         except Exception as e: 
                             print(e)
                             time.sleep(5)
                             match_data = False
+                        amount_of_members = check_for_elements(driver, '#membersTable > tbody > tr')
+                        if not amount_of_members:
+                            print('Щось пішло не так при введенні madridista.')
+                            match_data = False
+                            break
+                        if not len(amount_of_members) == len(ticketBotSettings['madridista']): 
+                            print('Не вдалось авторизуватись в кожен з madridista.')
+                            match_data = False
+                            break
                     elif not madridista:
                         try:
                             try:
@@ -719,8 +723,15 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                     if loadingModalStyle == "z-index: 999; display: block;":
                         driver.refresh()
                         continue
+                
+
                 # print(match_data)
-                if match_data == False: continue
+                if match_data == False: 
+                    print(f'Щось пішло не так, можливо на сайті зараз не можливо обрати кількість квитків.\nТакож перегляньте правильність введення Madridista.')
+                    continue
+                if not check_for_element(driver, 'li[id="seleccion-asientos"][class="active"]'):
+                    print('Не вдалось знайти стадіон, спроба перезапуска сторінки...')
+                    continue
                 sectors = None
                 try:
                     try:
