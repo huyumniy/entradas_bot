@@ -589,8 +589,18 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                     except:
                         pass
             while True: 
+                if check_for_element(driver, '#message-alert'):
+                    driver.execute_script("""
+                        var el = document.querySelector(arguments[0]);
+                        if (el) el.remove();
+                    """, "#message-alert")
+                time.sleep(.5)
                 change_step = check_for_element(driver, '.change-step', click=True)
-                if not change_step: driver.refresh()
+                time.sleep(1)
+                # if not change_step: 
+                #     print('[DEBUG] change step not found, reloading page...')
+                #     driver.refresh()
+                
                 is_403 = check_for_element(driver, '//h1[contains(text(), "Access")]|//h1[contains(text(), "403")]', xpath=True)
                 current_url = driver.current_url
                 if is_403:
@@ -721,6 +731,7 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                 if loadingModal:
                     loadingModalStyle = loadingModal.get_attribute('style')
                     if loadingModalStyle == "z-index: 999; display: block;":
+                        print('loading modal found, reloading page...')
                         driver.refresh()
                         continue
                 
@@ -732,6 +743,7 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                 if not check_for_element(driver, 'li[id="seleccion-asientos"][class="active"]'):
                     print('Не вдалось знайти стадіон, спроба перезапуска сторінки...')
                     continue
+                
                 sectors = None
                 try:
                     try:
