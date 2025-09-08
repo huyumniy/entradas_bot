@@ -596,10 +596,8 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                     """, "#message-alert")
                 time.sleep(.5)
                 change_step = check_for_element(driver, '.change-step', click=True)
-                time.sleep(1)
-                # if not change_step: 
-                #     print('[DEBUG] change step not found, reloading page...')
-                #     driver.refresh()
+                
+                
                 
                 is_403 = check_for_element(driver, '//h1[contains(text(), "Access")]|//h1[contains(text(), "403")]', xpath=True)
                 current_url = driver.current_url
@@ -735,15 +733,18 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                         driver.refresh()
                         continue
                 
-
                 # print(match_data)
                 if match_data == False: 
                     print(f'Щось пішло не так, можливо на сайті зараз не можливо обрати кількість квитків.\nТакож перегляньте правильність введення Madridista.')
                     continue
                 if not check_for_element(driver, 'li[id="seleccion-asientos"][class="active"]'):
                     print('Не вдалось знайти стадіон, спроба перезапуска сторінки...')
+                    driver.refresh()
                     continue
-                
+                change_step = check_for_element(driver, '.change-step')
+                if not change_step: 
+                    print('[DEBUG] change step not found, reloading page...')
+                    driver.refresh()
                 sectors = None
                 try:
                     try:
