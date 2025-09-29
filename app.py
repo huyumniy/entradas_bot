@@ -1,7 +1,7 @@
 import undetected_chromedriver as webdriver
 import time
 import os, sys, platform
-import datetime
+from datetime import datetime
 import tempfile
 from flask import Flask, request, Response 
 from slack_sdk import WebClient
@@ -9,6 +9,7 @@ from colorama import init, Fore
 import subprocess
 import requests
 from fake_useragent import UserAgent
+from utils.helpers import parse_time_string
 import threading
 import socket
 from selenium.common.exceptions import NoAlertPresentException, TimeoutException
@@ -329,7 +330,7 @@ def connect_vpn(driver):
     return True
 
 @eel.expose
-def main(initialUrl, isSlack, browsersAmount, isVpn, proxyList):
+def main(initialUrl, isSlack, browsersAmount, isVpn, startTime, proxyList):
     print(initialUrl, isSlack, browsersAmount, isVpn, proxyList)
     # eel.spawn(run(initialUrl, isSlack, browserAmount, proxyList))
     threads = []
@@ -339,7 +340,7 @@ def main(initialUrl, isSlack, browsersAmount, isVpn, proxyList):
         flask_thread.start()
     for i in range(1, int(browsersAmount)+1):  # Example: 3 threads, modify as needed
         if i!= 1: time.sleep(i*30)
-        thread = threading.Thread(target=run, args=(i, initialUrl, isSlack, browsersAmount, isVpn, proxyList))
+        thread = threading.Thread(target=run, args=(i, initialUrl, isSlack, browsersAmount, isVpn, startTime, proxyList))
         threads.append(thread)
         thread.start()
     # Wait for all threads to complete
@@ -397,7 +398,7 @@ def get_indexeddb_data(driver, db_name, store_name):
     return driver.execute_async_script(script)
 
 
-def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[]):
+def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, startTime, proxyList=[]):
     global r
     ua = UserAgent(platforms='mobile')
     random_ua = ua.random
@@ -519,6 +520,15 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
         connect_vpn(driver)
     driver.get(initialUrl)
     print(Fore.GREEN + f"Thread {thread_number}: Successfully started!\n")
+    if startTime:
+        parsed_date = parse_time_string(startTime)
+        while True:
+            if parsed_date and parsed_date > datetime.now().time().replace(second=0, microsecond=0): 
+                print('Waiting for', parsed_date)
+                time.sleep(5)
+                continue
+            driver.refresh()
+            break
     while True:
         try:
             no_stadium = True
@@ -616,6 +626,7 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                 maxprc = int(ticketBotSettings['maxPrice'])
                 minprc = int(ticketBotSettings['minPrice'])
                 ar = ticketBotSettings['radio']
+                
                 numero_mad = None
                 con_mad = None
                 result = driver.execute_script("return window.stopExecutionFlag;")
@@ -624,7 +635,7 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                     time.sleep(5)
                     continue
 
-                if not ticketBotSettings['madridista'] or len(ticketBotSettings['madridista']) < 1:
+                if madridista and (not ticketBotSettings['madridista'] or len(ticketBotSettings['madridista']) < 1) :
                     print('[DEBUG] no madridista profiles were found')
                     time.sleep(5)
                     continue
@@ -756,14 +767,17 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, proxyList=[])
                         pass
                     # FOUND: #sub-rafaelsalgado #sub-conchaespina
                     # LATERAL: #sub-castellana #sub-padredamian
-                    areas_holder = ''
-                    if 'l' == ar.lower(): sectors = check_for_elements(driver, "g[data-name^='Lateral'][class='sector']")
-                    elif 'f' == ar.lower(): sectors = check_for_elements(driver, "g[data-name^='Fondo'][class='sector']")
-                    else: sectors = check_for_elements(driver, "g[data-name][class='sector']")
+                    sectors = []
+                    print(ar, "radio value")
+                    if 'u' in ar: sectors.append(check_for_element(driver, "g[data-name][class='sector'][id='padredamian']"))
+                    if 'd' in ar: sectors.append(check_for_element(driver, "g[data-name][class='sector'][id='castellana']"))
+                    if 'l' in ar: sectors.append(check_for_element(driver, "g[data-name][class='sector'][id='rafaelsalgado']"))
+                    if 'r' in ar: sectors.append(check_for_element(driver, "g[data-name][class='sector'][id='conchaespina']"))
+                    if not any(c in ar for c in ["u", "d", "l", "r"]): sectors = check_for_elements(driver, "g[data-name][class='sector']")
                     if type(sectors) == None: continue
                     if len(sectors) < 1: continue
-                    random_sector = random.choice(sectors)
-                    random_sector.click()
+                    sector = random.choice(sectors)
+                    sector.click()
                 except Exception as e:
                     print(e)
                     time.sleep(.5)

@@ -16,7 +16,7 @@ window.onload = () => {
     amount: null,
     isMadridista: false,
     madridista: { login: "222222", password: "2222222" } && null,
-    radio: null,
+    radio: [],
     stopExecutionFlag: true
   };
 
@@ -35,9 +35,10 @@ window.onload = () => {
           
           <form class="tickets view_selector">
               <span class="tickets tickets_title">Select View:</span>
-              <input type="radio" name="view" value="0" id="0" checked><label for="view_0">0 : ALL</label>
-              <input type="radio" name="view" value="F" id="F"><label for="view_F">F : FRONTAL</label>
-              <input type="radio" name="view" value="L" id="L"><label for="view_L">L : LATERAL</label>
+              <input type="checkbox" name="view" value="U" id="U"><label for="view_up">Up</label>
+              <input type="checkbox" name="view" value="D" id="D"><label for="view_down">Down</label>
+              <input type="checkbox" name="view" value="L" id="L"><label for="view_left">Left</label>
+              <input type="checkbox" name="view" value="R" id="R"><label for="view_right">Right</label>
               <br>
           </form>
           <br>
@@ -294,10 +295,11 @@ window.onload = () => {
       document.body.appendChild(container);
     
       // Initialize form values
-      let viewSelectoRadios = document.querySelectorAll('.view_selector > input[type="radio"]')
-      for (var radio of viewSelectoRadios) {
-        if (settings.radio === radio.value) {
-          radio.checked = true;
+      
+      let viewSelectoRadios = document.querySelectorAll('.view_selector > input[type="checkbox"]')
+      for (var checkbox of viewSelectoRadios) {
+        if (checkbox.value in settings.radio) {
+          checkbox.checked = true;
         }
       }
 
@@ -578,10 +580,13 @@ window.onload = () => {
 
     settings.amount = isMadridista ? tempMadridista.length : amount;
 
-    const selectedViewRadio = document.querySelector(
-      '.view_selector > input[type="radio"]:checked'
+    const selectedViewRadio = document.querySelectorAll(
+      '.view_selector > input[type="checkbox"]:checked'
     );
-    settings.radio = selectedViewRadio ? selectedViewRadio.value : null;
+    console.log(selectedViewRadio)
+    for (selectedView in selectedViewRadio) {
+      settings.radio.push(selectedView.value)
+    }
     
 
     // settings.selection = parseInt(document.getElementById("selection").value);
