@@ -401,6 +401,20 @@ window.onload = () => {
         el.style.display = 'none';
         document.body.style.overflow = 'auto';
     },
+    
+    changeStopButtonStatus: function () {
+      let stopButton = document.getElementById("stopButton");
+      if (stopButton.innerHTML === "Stop") {
+        stopButton.innerHTML = "Resume";
+        stopButton.style.backgroundColor = "#FFD32C";
+        settings.stopExecutionFlag = true;
+      } else if (stopButton.innerHTML === "Resume") {
+        stopButton.innerHTML = "Stop";
+        stopButton.style.backgroundColor = "#139df4";
+        settings.stopExecutionFlag = false;
+      }
+      saveSettings();
+    },
 
     addTicket: function (type, name, placeholder, width, value=null) {
       let input = document.createElement('input');
@@ -489,6 +503,32 @@ window.onload = () => {
 
         document.body.appendChild( btn );
     },
+
+    createStopButton: function () {
+        var btn = document.createElement( 'a' );
+        btn.className = 'left button button-small button-blue';
+        btn.id = "stopButton";
+        if (settings.stopExecutionFlag) {
+          btn.innerHTML = "Resume";
+          btn.style.backgroundColor = "#FFD32C";
+        } else if (!settings.stopExecutionFlag) {
+          btn.innerHTML = "Stop";
+          btn.style.backgroundColor = "#139df4";
+        }
+        btn.style.position = 'fixed';
+        btn.style.left = '15px';
+        btn.style.bottom = '15px';
+        btn.style.cursor = 'pointer';
+        btn.style.letterSpacing = '1.2px';
+        btn.style.fontWeight = '600';
+
+        btn.onclick = function ( e ) {
+            e.preventDefault();
+            UI.changeStopButtonStatus();
+        };
+
+        document.body.appendChild( btn );
+    },
   }
 
   function loadSettings() {
@@ -504,12 +544,14 @@ window.onload = () => {
       }
       UI.init();
       UI.createButton( 'Налаштування', UI.openPopup );
+      UI.createStopButton();
     };
 
     getRequest.onerror = function () {
       console.error("Error loading settings from IndexedDB.");
       UI.init();
       UI.createButton( 'Налаштування', UI.openPopup );
+      UI.createStopButton();
     };
   }
   
@@ -591,7 +633,7 @@ window.onload = () => {
     
 
     // settings.selection = parseInt(document.getElementById("selection").value);
-    window.stopExecutionFlag = undefined;
+    settings.stopExecutionFlag = false;
     saveSettings(); // Save the updated settings to IndexedDB
     UI.closePopup()
   }
@@ -599,7 +641,6 @@ window.onload = () => {
   function saveSettings() {
     const transaction = db.transaction("settings", "readwrite");
     const store = transaction.objectStore("settings");
-    window.stopExecutionFlag = undefined;
     store.put({ id: 1, settings: settings });
 
     transaction.oncomplete = function () {
