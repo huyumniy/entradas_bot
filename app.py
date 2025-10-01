@@ -769,13 +769,19 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, startTime, pr
                     # LATERAL: #sub-castellana #sub-padredamian
                     sectors = []
                     print(ar, "radio value")
-                    if 'u' in ar: sectors.append(check_for_element(driver, "g[data-name][class='sector'][id='padredamian']"))
-                    if 'd' in ar: sectors.append(check_for_element(driver, "g[data-name][class='sector'][id='castellana']"))
-                    if 'l' in ar: sectors.append(check_for_element(driver, "g[data-name][class='sector'][id='rafaelsalgado']"))
-                    if 'r' in ar: sectors.append(check_for_element(driver, "g[data-name][class='sector'][id='conchaespina']"))
-                    if not any(c in ar for c in ["u", "d", "l", "r"]): sectors = check_for_elements(driver, "g[data-name][class='sector']")
+                    if 'U' in ar: sectors.append(check_for_element(driver, "g[data-name][class='sector'][id='padredamian']"))
+                    if 'D' in ar: sectors.append(check_for_element(driver, "g[data-name][class='sector'][id='castellana']"))
+                    if 'L' in ar: sectors.append(check_for_element(driver, "g[data-name][class='sector'][id='rafaelsalgado']"))
+                    if 'R' in ar: sectors.append(check_for_element(driver, "g[data-name][class='sector'][id='conchaespina']"))
+                    is_any_sector = True
+                    for c in ["U", "D", "L", "R"]:
+                        if c in ar: is_any_sector = False
+                    if is_any_sector:
+                        print('any sector')
+                        sectors = check_for_elements(driver, "g[data-name][class='sector']")
                     if type(sectors) == None: continue
                     if len(sectors) < 1: continue
+                    print(sectors, "sectors")
                     sector = random.choice(sectors)
                     sector.click()
                 except Exception as e:

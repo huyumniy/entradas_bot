@@ -297,9 +297,9 @@ window.onload = () => {
       // Initialize form values
       
       let viewSelectoRadios = document.querySelectorAll('.view_selector > input[type="checkbox"]')
-      for (var checkbox of viewSelectoRadios) {
-        if (checkbox.value in settings.radio) {
-          checkbox.checked = true;
+      for (let i=0;i<viewSelectoRadios.length;i++) {
+        if (settings.radio.includes(viewSelectoRadios[i].value)) {
+          viewSelectoRadios[i].checked = true;
         }
       }
 
@@ -580,13 +580,14 @@ window.onload = () => {
 
     settings.amount = isMadridista ? tempMadridista.length : amount;
 
+    settings.radio = []
     const selectedViewRadio = document.querySelectorAll(
-      '.view_selector > input[type="checkbox"]:checked'
+      'div[style="display: block;"] .view_selector > input[type="checkbox"]:checked'
     );
-    console.log(selectedViewRadio)
-    for (selectedView in selectedViewRadio) {
-      settings.radio.push(selectedView.value)
+    for (let i = 0; i<selectedViewRadio.length;i++) {
+      settings.radio.push(selectedViewRadio[i].value)
     }
+      
     
 
     // settings.selection = parseInt(document.getElementById("selection").value);

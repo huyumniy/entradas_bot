@@ -5,7 +5,7 @@
     "description": "Entradas Bot Configuration",
     "content_scripts": [
       {
-        "matches": ["*://*.entradas.com/*"],
+        "matches": ["*://*.entradas.com/*", "*://*.realmadrid.com/*"],
         "js": ["src/content_scripts/content.js"]
       }
     ],
