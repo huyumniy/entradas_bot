@@ -2,7 +2,7 @@
 <html>
     <head>
         <title>BP Proxy manager</title>
-<meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+        <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
 
         <link rel="stylesheet" href="bs/css/bootstrap-select.min.css">
         <link rel="stylesheet" href="style.css">
@@ -17,7 +17,8 @@
         <script src="js/jquery-linedtextarea.js"></script>
 
     </head>
-    <body> 
+    <body>
+
         <div class="container" >
             <ul class="nav nav-tabs" role="tablist">
                 <li><a href="#" id="deleteOptions">Delete</a></li>
@@ -33,7 +34,7 @@
 
             <form action="https://testmyproxies.com/?d=1" method="POST" target="_blank" id="testmyproxiesForm">
                 <div id="proxySelectDiv" style="height: 50px">
-                    <select id="selectProxy"  class="selectpicker"  data-size="6" data-width="370px"   style="width:370px;height: 400px;"></select> 
+                    <select id="selectProxy"  class="selectpicker"  data-size="6" data-width="380px"   style="width:380px;height: 400px;"></select>
                     <a href="#" id="editProxyList" ><small><b>edit</b></small></a>
                     <input type="hidden" name="proxies" id="proxiesHidden">
                     <input type="hidden" name="type" id="typeOfProxies">
@@ -42,63 +43,53 @@
 
             <div id="proxyRotationDiv" style="display:none">
                 <div id="rotatingText"></div>
-                <button id="stopRotation" class="btn btn-small btn-danger">Stop rotation</button>
+                <button id="stopRotation" class="btn btn-small btn-danger" style="display:none">Stop rotation</button>
             </div>
 
             <label for="autoReload"><input type="checkbox" id="autoReload" >Auto-reload the tab on proxy switch</label>
             <input type="button" id="testMyProxies" value="Test proxies" class="btn btn-primary" title="Test all your proxies on TestMyProxies.com">
-
+            <br>
             <div >
                 <b>User agent</b>  <br>
-                <select id="selectUserAgent"  style="width:370px"></select> 
+                <select id="selectUserAgent"  style="width:380px"></select>
                 <a href="#" id="editUserAgentList"><small><b>edit</b></small></a>
             </div>
 
-            <br><br>
+            <br>
             <div class="alert alert-info" id="promo" style="display:none">
-               
+
             </div>
 
             <div class="right">
-                <small><strong>BP Proxy Switcher</strong> (v4.0.5) &copy; <a href="http://buyproxies.org/panel/link.php?id=103" target="blank"><b>buyproxies.org</b></a></small>
+                <small><strong>BP Proxy Switcher</strong> (5.7) &copy; <a href="http://buyproxies.org/panel/link.php?id=103" target="blank"><b>buyproxies.org</b></a></small>
             </div>
         </div>
 
         <div id="tab2" style="display:none;height:400px;width:500px">
-            <b>Enter proxies</b> <br>
-            <label for="proxyMode0"><input type="radio" name="proxyMode" value="0" id="proxyMode0" > Manually </label> 
-            <label for="proxyMode1"><input type="radio"  name="proxyMode" value="1" id="proxyMode1" > Read automatically from URL </label> 
-            <br><br>
-            Proxy Type <select id="proxiesType"><option value="http">HTTP(S)</option><option value="socks4">SOCKS4</option><option value="socks5">SOCKS5</option></select>
+            <h4>Enter proxies</h4> <br>
+            Proxy Type <select id="proxiesType"><option value="http">HTTP(S)</option><option value="socks5">SOCKS5</option></select>
+            <div class="alert alert-danger" role="alert" id='socksWarning'>
+                The browser doesn't support SOCKS5 with user&pass
+            </div>
+
 
             <div id="proxyArea0">
-                <br><b>ip:port:user:pass:label / ip:port:label</b> 
-                <br /> 
-                <textarea style="width:100%;height:200px" 
+                <br><b>ip:port:user:pass:label / ip:port:label</b>
+                <br />
+                <textarea style="width:100%;height:240px"
                           placeholder="Paste the proxies here, one proxy per line&#10;&#10;Label is optional, only if you want to have&#10;&#10;a custom name on the proxy in the proxies dropdown" id="proxiesTextArea"></textarea><br>
             </div>
 
-            <div id="proxyArea1">
-                <br>
-                <b>Load the proxies automatically, in the proxy selector from this URL</b><br>
-                <input type="text" id="urlProxies" style="width:450px" placeholder="http(s):// where the proxies are in .txt format, one proxy per line"> 
-                <br><br>
-                at every <br>
-                <input type="text" style="width:50px" id="urlMinutes"> minutes
-                
-                <br>  <br>  <br>  <br>  <br>  <br> 
-            </div>
-            <br>
             <label for="getLocations"><input type="checkbox" name="getLocations" id="getLocations">Detect the country for each proxy</label>
 
             <div class="right">
                 <button id="addProxyCancel" class="btn btn-danger">Cancel</button>
-                <button id="addProxyOK" class="btn btn-success">OK</button> 
+                <button id="addProxyOK" class="btn btn-success">OK</button>
             </div>
         </div>
 
         <div id="tab3" style="display:none;height:350px;width:400px">
-            <b>On proxy change delete:</b>
+            <h4>On proxy change delete:</h4>
 
             <div id="privacy"></div>
             <br> stored in the last  <select id="timeInterval">
@@ -120,16 +111,16 @@
 
 
             <div >
-                <img id="monkey"> <br>
-                Made by the monkeys from <a href="http://buyproxies.org">BuyProxies.org</a>. 
-                <br>If you have any bug/suggestion/banana please write them to <b>support@buyproxies.org</b>  
-       
+                <img id="monkey"> <br><br>
+                Made by the monkeys from <a href="http://buyproxies.org">BuyProxies.org</a>.
+                <br>If you have any bug/suggestion/banana please write them to <b>support@buyproxies.org</b>
+
             </div>
 
             <div class="right">
                 <button id="aboutOK" class="btn btn-success">OK</button>
             </div>
-        </div>    
+        </div>
 
 
         <div id="tab5" style="display:none;width:400px">
@@ -143,34 +134,38 @@
             <button id="rotateCancel" class="btn btn-danger">Cancel</button>
             <button id="rotateOK" class="btn btn-success">Start</button>
 
-        </div>  
+        </div>
 
 
         <div id="tab6" style="display:none;height:300px;width:500px">
-            <b>User Agents</b>
-            <br /> 
+            <h4>User Agents</h4>
+
             <textarea style="width:500px;height:250px" placeholder="Paste the useragents here, one per line" id="userAgentsTextArea"></textarea>
             <div class="right">
                 <button id="addUserAgentCancel" class="btn btn-danger">Cancel</button>
-                <button id="addUserAgentOK" class="btn btn-success">OK</button> 
+                <button id="addUserAgentOK" class="btn btn-success">OK</button>
             </div>
         </div>
 
         <div id="tab7" style="display:none;width:400px">
-            <b>Block</b> 
+            <h4>Block</h4>
             <div id="blockContainer"></div>
-            <br>
-            <b>Block this URLs:</b> <br>
-            <textarea id="blockURLs" placeholder="Example:&#10;domain1.com&#10;domain2.com/img&#10;bad_script.php" style="width:100%;height:70px"></textarea> <br>
+            <label for="webRTC"> <input type="checkbox" id="webRTC">WebRTC (improves privacy but could also block some video streaming)</label>
+            <br><br>
+            <h4>Block these URLs:</h4>
+            <textarea id="blockURLs" placeholder="Example:&#10;domain1.com&#10;domain2.com/img&#10;bad_script.php" style="width:100%;height:130px"></textarea> <br>
             <div class="right">
                 <button id="blockOK" class="btn btn-success">OK</button>
             </div>
-        </div>    
+        </div>
 
         <div id="tab8" style="display:none;width:400px;">
-            <b> Show notifications when: </b><br>
+            <h4> Show notifications when: </h4>
             <div id="settingsContainer"></div>
 
+            <label for="changeProxyNotification"><input type="checkbox" id="changeProxyNotification" >changing the proxies</label>
+            <br><label for="deleteCookiesNotification"><input type="checkbox" id="deleteCookiesNotification" >deleting the cookies and the cache</label>
+            <br>
             <div class="right">
                 <button id="bandwidthOK" class="btn btn-success">OK</button>
             </div>
@@ -184,7 +179,7 @@
         </div>
 
         <div id="tab10" style="display:none;width:400px;height:300px">
-            <b>Don't use the proxies for this domains/IPs:</b> <small><br>
+            <h4>Don't use the proxies for this domains:</h4>
             <textarea style="width:390px;height:250px" id='excludeListTextarea' placeholder="Example&#10;domain1.com&#10;domain2.com"></textarea>
             <div class="right">
                 <button id="excludeOK" class="btn btn-success">OK</button>

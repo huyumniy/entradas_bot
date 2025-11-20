@@ -1,244 +1,428 @@
-var brs = "chrome";
-var rotateProxyTimer, loadProxiesTimer, rotateSeconds, rotateCurrent;
-var timeoutRotate, rotateTimerOn = false, loadProxiesTimerOn = false;
-var localStorage = [];
-var deleteValues = ["cache", "cookies", "downloads", "localStorage", "formData", "history", "indexedDB", "pluginData", "passwords", "serverBoundCertificates"];
-var blockValues = ["webRTC"];
-var settingsValues = ["proxyNotification", "agentNotification", "deleteNotification"];
-var settingsValuesTxt = {"proxyNotification": "changing the proxies",
-    "deleteNotification": "deleting the cookies and the cache",
-    "agentNotification": "changing browser agent"};
-var userAgents = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/601.7.7 (KHTML, like Gecko) Version/9.1.2 Safari/601.7.7\nMozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.132 Safari/537.36\nMozilla/5.0 (Windows NT 10.0; WOW64; rv:56.0) Gecko/20100101 Firefox/56.0\nMozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.135 Safari/537.36 Edge/12.10240\nMozilla/5.0 (iPad; CPU OS 10_2_1 like Mac OS X) AppleWebKit/602.4.6 (KHTML, like Gecko) Version/10.0 Mobile/14D27 Safari/602.1)\nMozilla/5.0 (Linux; Android 7.1; vivo 1716 Build/N2G47H) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.98 Mobile Safari/537.36";
-var failedLogins = 0, proxyUsed = 1;
-var proxyCurrent, portCurrent, userCurrent, passCurrent;
+var locations, selectedProxyIndex, proxies, agents, selectedProxy, autoReload, excludeList, rotateProxyTimer, rotateCurrent, proxiesList, rotationDelay = 5, shufflerotate, cyclerotate;
+const deleteValues = [
+    {
+        id: "cache",
+        description: "temporary files stored to speed up loading"
+    },
+    {
+        id: "cookies",
+        description: "data stored by websites to remember you"
+    },
+    {
+        id: "history",
+        description: "list of websites you have visited"
+    },
+    {
+        id: "downloads",
+        description: "history of downloaded files"
+    },
+    {
+        id: "formData",
+        description: "information entered into forms"
+    },
+    {
+        id: "localStorage",
+        description: "website-specific stored data"
+    },
+    {
+        id: "passwords",
+        description: "saved login credentials"
+    },
+    {
+        id: "fileSystems",
+        description: "data stored by the File System API"
+    },
+    {
+        id: "indexedDB",
+        description: "noSQL database for client-side storage"
+    },
+    {
+        id: "serviceWorkers",
+        description: "background scripts for handling requests"
+    },
+    {
+        id: "webSQL",
+        description: "database storage in browsers"
+    }
+];
 
-if (brs==="firefox"){
-    chrome = browser;
-}
+function makeVal(v, m) {
+    if (typeof v === 'undefined') {
+        {
+            return m;
 
-function sanitizeProxies(prox) {
-
-    try {
-        prox = prox.toString().replace(/ /g, "");
-        proxiesArr = prox.split("\n");
-        proxiesNew = [];
-        for (i = 0; i < proxiesArr.length; i++) {
-            if (proxiesArr[i].length > 5) {
-
-                proxiesNew.push(proxiesArr[i]);
-            }
         }
-        return proxiesNew.join("\n");
-    } catch (e) {
-        return prox;
-    }
-}
-
-function shouldLoadProxiesFromUrl() {
-    var d = new Date();
-    if (loadConf("proxyMode") === 1 && loadConf("loadProxiesDate") <= d.getTime()) {
-        loadProxiesFromUrl();
-    }
-}
-
-function stopLoadProxiesTimer() {
-    clearInterval(loadProxiesTimer);
-    loadProxiesTimerOn = false;
-}
-
-function loadProxiesFromUrl() {
-    if (loadConf("lastProxy") !== 'NOPROXY') {
-        p = parseProxy(loadConf("lastProxy"));
-        if (p[1] > 1) {
-            putProxy(p[0], p[1], '', true);
-        }
-    }
-    stopLoadProxiesTimer();
-    loadProxiesTimerOn = true;
-    var d = new Date();
-    saveConf("loadProxiesDate", d.getTime() + 60 * 1000 * loadConf("urlMinutes"));
-    loadProxiesTimer = setInterval(shouldLoadProxiesFromUrl, 60 * 1000 * loadConf("urlMinutes"));
-    var xhr = new XMLHttpRequest();
-    xhr.open("GET", makeUrlUnique(loadConf("urlProxies")), true);
-    xhr.onreadystatechange = function () {
-
-        if (xhr.readyState === 4) {
-            var error = "", answer = "";
-            if (xhr.status === 200) {
-                var proxies = sanitizeProxies(xhr.responseText);
-                if (proxies.length < 1) {
-                    error = "No proxies found on that URL";
-                } else {
-                    saveConf("proxiesList", proxies)
-                    getLocations();
-                }
-            } else {
-                error = "Error loading the URL!\n Error\n" + xhr.status + "\nContent of the URL:\n\n " + xhr.responseText;
-            }
-
-            if (error !== "") {
-                chrome.runtime.sendMessage({"answer": answer, "call": "loadProxiesFromUrl", "error": error});
-            }
-        }
-
-    }
-    xhr.send();
-}
-
-
-function makeUrlUnique(url) {
-    if (url.toString().indexOf("?") !== -1) {
-        return url + "&rand=" + Math.random();
     } else {
-        return url + "?rand=" + Math.random();
+        return v;
     }
 }
-function getLocations() {
 
-    var xhr = new XMLHttpRequest();
-    var date = loadConf("date");
-    xhr.open("POST", "https://testmyproxies.com/_scripts/showLocations.php?d=" + date, true);
-    xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-    xhr.onreadystatechange = function () {
-        if (xhr.readyState === 4) {
-            saveConf("locations", xhr.responseText);
-            chrome.runtime.sendMessage({"call": "getLocations"});
+function updateBadgeText() {
+
+
+    loadOpt("proxiesList", async (res) => {
+
+        console.log("updateBadgeText");
+        proxiesList = makeVal(res['proxiesList'], []);
+        locations = makeVal(res['locations'], []);
+        agents = makeVal(res['userAgents'], []);
+        autoReload = res['autoReload'];
+        proxy = makeVal(res['selectedProxy'], "NOPROXY");
+        selectedProxyIndex = makeVal(res['selectedProxyIndex'], "NOPROXY");
+        proxiesType = makeVal(res['proxiesType'], 0);
+        excludeList = makeVal(res['excludeList'], false);
+        cyclerotate = makeVal(res['cyclerotate'], false);
+        shufflerotate = makeVal(res['shufflerotate'], false);
+
+        locationTxt = "++";
+
+        if (proxy === "NOPROXY") {
+            locationTxt = "--";
+        } else {
+            const p = proxy.split(":");
+            if (locations.hasOwnProperty(p[0])) {
+                locationTxt = locations[p[0]];
+            } else {
+                locationTxt = "";
+            }
+        }
+
+
+        chrome.action.setBadgeText({text: locationTxt});
+
+        if (autoReload) {
+            refreshTab();
+        }
+    });
+
+}
+
+function updateBlockedUrls(urls) {
+
+
+
+    var rules = urls.map((url, index) => ({
+
+            id: index + 1, // Unique ID for each rule
+            priority: 1,
+            action: {type: "block"},
+            condition: {
+                urlFilter: `*://*.${url}/*`, // Blocking all subdomains and paths
+                resourceTypes: ["main_frame"],
+            },
+        }
+        ));
+
+    const rl = rules.length + 1;
+
+    rules.push({
+        "id": rl,
+        "priority": 1,
+        "action": {
+            "type": "modifyHeaders",
+            "responseHeaders": [
+                {
+                    "header": "Set-Cookie",
+                    "operation": "set",
+                    "value": "Secure; HttpOnly"
+                }
+            ]
+        },
+        "condition": {
+            "urlFilter": "*://*/*",
+            "resourceTypes": ["main_frame"]
+        }
+    });
+
+
+    // Clear existing rules and add new ones
+    chrome.declarativeNetRequest.getDynamicRules(existingRules => {
+        const existingRuleIds = existingRules.map(rule => rule.id);
+        chrome.declarativeNetRequest.updateDynamicRules({
+            removeRuleIds: existingRuleIds,
+            addRules: rules,
+        });
+    });
+
+
+}
+
+function putProxy() {
+
+
+    loadOpt("proxiesList", async (res) => {
+
+        deleteOptions();
+
+        proxy = res.selectedProxy;
+
+        const p = proxy.split(":");
+
+        console.log("putProxy3 " + p);
+
+        const proxiesType = res.proxiesType;
+
+        if (p[1] === '4444') {
+            scheme = "http";
+            p[1] = 80;
+        } else if (proxiesType === 1) {
+            scheme = "socks5";
+        } else {
+            scheme = "http";
+        }
+
+        var pl = [];
+        if (res.excludeList) {
+            pl = res.excludeList.split("\n");
+        }
+
+
+        proxiesList = [];
+        proxiesList.push("localhost");
+        proxiesList.push("*testmyproxies.com")
+        for (i = 0; i < pl.length; i++) {
+            proxiesList.push("*" + pl[i]);
+        }
+
+        proxiesList = proxiesList.join(",");
+
+        console.log(proxiesList);
+
+        const proxyConfig = {
+            mode: "fixed_servers",
+            rules: {
+                singleProxy: {
+                    scheme: scheme,
+                    host: p[0],
+                    port: parseInt(p[1])
+                },
+                bypassList: [proxiesList]
+
+            }
+        };
+
+        chrome.proxy.settings.set({
+            value: proxyConfig,
+            scope: 'regular'
+        },
+                () => {
+            updateBadgeText();
+            createNotification("Proxy set", p[0], "changeProxyNotification");
+
+
+        }
+        );
+    }
+    );
+}
+
+
+
+
+
+function clearProxy() {
+    saveOpt("selectedProxy", "NOPROXY");
+    chrome.proxy.settings.clear(
+            {
+                scope: 'regular'
+            },
+            () => {
+        createNotification("Proxy disabled", "NO proxy", "changeProxyNotification");
+
+    }
+    );
+}
+
+function onInstall() {
+
+
+// Create a context menu
+    chrome.contextMenus.create({
+        id: "BpMenu1",
+        title: "Delete cookies and cache",
+        contexts: ["page"]
+    });
+
+
+    chrome.contextMenus.onClicked.addListener((info, tab) => {
+        console.log("Bp Menu 1");
+        if (info.menuItemId === "BpMenu1") {
+            // Action when context menu is clicked
+            if (!tab.url.startsWith("chrome://")) {
+                console.log("Bp Menu 2");
+                deleteOptions();
+            }
+        }
+    });
+
+    saveOpt("getLocations", "true");
+    saveOpt("autoReload", "true");
+    saveOpt("changeProxyNotification", "true");
+
+    chrome.tabs.create({
+        url: "about:blank"
+    });
+
+
+}
+
+
+function saveOpt(opt, val) {
+    let storageObject = {};
+    storageObject[opt] = val;
+
+    chrome.storage.local.set(storageObject, function () {
+        console.log('saveOptBG=' + opt + " val=" + val);
+    });
+}
+
+function loadOpt(val, callback) {
+    chrome.storage.local.get(null, function (result) {
+
+        callback(result || []);
+    });
+}
+
+
+
+chrome.runtime.onStartup.addListener(updateBadgeText);
+chrome.runtime.onInstalled.addListener(onInstall);
+
+function updateProxyConfig(proxyConfig) {
+    let config = {
+        mode: "fixed_servers",
+        rules: {
+            singleProxy: {
+                scheme: proxyConfig.type,
+                host: proxyConfig.host,
+                port: parseInt(proxyConfig.port, 10)
+            },
+            bypassList: ["localhost", "testmyproxies.com"]
         }
     };
-    var proxies = loadConf("proxiesList").split("\n");
-    var ips = getProxiesIps(proxies);
-    xhr.send("ips=" + ips.join("-"));
+    chrome.proxy.settings.set({value: config, scope: 'regular'});
 }
 
-function getProxiesIps(prox) {
-    r = [];
-    for (var i = 0; i < prox.length; i++) {
 
-        p = parseProxy(prox[i]);
-        if (p[0].length > 6) {
-            r.push(p[0]);
+function refreshTab() {
+    try {
+        chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+            if (tabs && tabs[0] && tabs[0].id) {
+
+                chrome.tabs.reload(tabs[0].id);
+            }
+        });
+    } catch (e) {
+    }
+}
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+
+    if (message.action === 'updateBadgeText' && message.text) {
+        updateBadgeText();
+    } else if (message.action === 'putProxy') {
+        if (message.text === "NOPROXY") {
+            clearProxy();
+        } else {
+            putProxy();
         }
+        updateBadgeText();
+
+    } else if (message.action === 'updateBlocked') {
+        const urls = message.urls || [];
+        updateBlockedUrls(urls);
+
+    } else if (message.action === 'deleteOptions') {
+        deleteOptions();
+
+    } else if (message.action === 'startRotation') {
+
+        saveOpt("rotating", true);
+        loadOpt("proxiesList", async (res) => {
+
+            console.log("updateBadgeText");
+            proxiesList = res['proxiesList'];
+            if (res.shufflerotate) {
+                proxiesList = shuffle(proxiesList);
+                saveOpt("proxiesList", proxiesList);
+
+            }
+            console.log("startRotation 001");
+
+            rotationDelay = message.text;
+            console.log("startRotation 002");
+            startRotation();
+
+        });
+
+
+    } else if (message.action === 'stopRotation') {
+        console.log("stopLocation!");
+        stopRotation();
     }
-    return r;
+
+
+});
+
+
+function startRotation() {
+    saveOpt("rotating", true);
+    sendMsg("startRotationBg");
+    rotateCurrent = 1;
+    selectedProxyIndex = 2;
+    console.log("startRotation 003");
+    try {
+        console.log("startRotation p=" + proxiesList);
+    } catch (e) {
+        console.log("errr e=" + e);
+    }
+    console.log("startRotation 004");
+
+    proxy = proxiesList[0];
+    saveOpt("selectedProxyIndex", selectedProxyIndex);
+    saveOpt("selectedProxy", proxy);
+
+    console.log("startRotation");
+
+    putProxy();
+    rotateProxyTimer = setInterval(rotateProxy, 1000);
 }
 
-function startProxyRotation() {
-    if (!rotateTimerOn) {
-        rotateCurrent = 1;
-        proxiesList = getProxiesList();
-        setProxy(proxiesList[0]);
-        rotateProxyTimer = setInterval(rotateProxy, 1000);
-        rotateTimerOn = true;
-    }
+function stopRotation() {
+    clearInterval(rotateProxyTimer);
+    saveOpt("rotating", false);
+    sendMsg("stopRotationBg");
 
 }
 
-function stopProxyRotation() {
-    if (rotateTimerOn) {
-        rotateTimerOn = false;
-        clearInterval(rotateProxyTimer);
-        displayCurrentCountry();
-    }
+function sendMsg(action, data = "") {
+    chrome.runtime.sendMessage({'action': action, 'data': data}, function (response) {
+        if (chrome.runtime.lastError) {
+
+        } else {
+
+        }
+    });
+}
+function getProxyRotationRemaining() {
+    return rotationDelay - rotateCurrent;
 
 }
 
 function rotateProxy() {
-    if (getProxyRotationRemaining() <= 0) {
+    var seconds = getProxyRotationRemaining();
+    if (seconds <= 0) {
         rotateToNextProxy();
         rotateCurrent = 0;
-    }
-
-
-    displayCurrentCountry();
-    rotateCurrent++;
-}
-
-function getProxyRotationRemaining() {
-    var sec = loadConf("rotationDelay") - rotateCurrent;
-    return sec;
-}
-
-function saveConf(n, v) {
-    if (brs==="firefox") {
-        try {
-            window.localStorage.setItem(n, JSON.stringify(v));
-        } catch (e) {
-            window.localStorage.setItem(n, v);
-        }
     } else {
-        localStorage[n] =JSON.stringify(v);
-        syncStorage();
-    }
-}
-
-function syncStorage() {
-    if (brs==="firefox") {
-        localStorage.setItem('localStorage', JSON.stringify(localStorage));
-    } else {
-        try {
-            chrome.storage.local.set({"localStorage": JSON.stringify(localStorage)}, function () {});
-        } catch (e) {
-            alertTxt(e, "error Sync");
-        }
-        
-    }
-}
-
-function loadStorage() {
-    if (brs==="firefox") {
-        localStorage = JSON.parse(localStorage.getItem('localStorage'));
-        if (localStorage.length < 1) {
-            localStorage = [];
-        }
-
-    } else {
-        try {
-            chrome.storage.local.get("localStorage", function (res) {
-                localStorage = res["localStorage"];
-                if (localStorage.length < 1) {
-                    localStorage = [];
-                }
-
-            });
-        } catch (e) {
-            alertTxt(e, "error loadStorage");
-        }
-    }
-}
-
-function loadConfFromArr(v, k) {
-    r = loadConf(v);
-    if (r[k] != 'undefined') {
-        return r[k];
+        rotateCurrent++;
     }
 
-    return false;
-}
 
-function rotateToNextProxy() {
-    index = loadConf("selectedProxyIndex");
-    proxiesList = getProxiesList();
-    if (index < proxiesList.length + 1) {
-        setProxy(proxiesList[index - 2 + 1]);
-    } else {
-        cyclerotate = loadConf("cyclerotate");
-        if (loadConf("cyclerotate")) {
-            if (loadConf("shufflerotate")) {
-                proxiesList = shuffle(proxiesList);
-                saveConf("proxiesList", proxiesList.join("\n"));
-                notify("Rotation", "End of the proxy rotation. Shuffling the list and starting again from the top");
-            } else {
-                notify("Rotation", "End of the proxy rotation. Starting again from the top");
-            }
-            setProxy(proxiesList[0]);
-        } else {
-            stopProxyRotation();
-            alertTxt("End of the proxy list was reached. Stoping the rotation");
-        }
-    }
+    sendMsg("rotatingSeconds", seconds);
+
 
 }
-
 
 function shuffle(array) {
     let counter = array.length;
@@ -253,559 +437,165 @@ function shuffle(array) {
     return array;
 }
 
-function getProxiesList() {
-    return loadConf("proxiesList").split("\n");
-}
+function rotateToNextProxy() {
 
+    console.log(`proxiesList: ` + proxiesList.length);
 
-function getExcludeList() {
+    // proxiesList = getProxiesList();
+    if (selectedProxyIndex < proxiesList.length + 1) {
+        selectedProxyIndex = selectedProxyIndex + 1;
 
-    var e = loadConf("excludeList").split("\n");
-    var exclude = [];
-    for (i = 0; i < e.length; i++) {
-        if (e[i] == "localhost") {
-            e[i] = "<local>";
-            exclude.push(e[i]);
-        } else {
-            exclude.push(e[i]);
-            exclude.push("*." + e[i]);
-        }
+        console.log(" rotate to index=" + selectedProxyIndex + " proxy=" + proxiesList[selectedProxyIndex - 2]);
 
-    }
-    var urlProx = loadConf("urlProxies");
-    if (urlProx.length > 1) {
-        var e1 = loadConf("urlProxies").split("//");
-        var e2 = e1[1].toString().split("/");
-        exclude.push(e2[0]);
-    }
-    exclude.push("testmyproxies.com");
-    exclude.push("*.testmyproxies.com");
-    if (brs==="firefox") {
-        return "'" + exclude.join(",") + "'";
-    } else {
-        return "'" + exclude.join(";") + "'";
-    }
-}
-
-
-function parseProxy(proxy) {
-    var p = proxy.split(':'), out = [];
-    if (p.length > 7) {
-        var ip = [];
-        for (i = 0; i < 8; i++) {
-            ip.push(p[i].trim());
-        }
-        out[0] = ip.join(":");
-        out[1] = p[8].trim();
-        out[2] = p[9].trim();
-        out[3] = p[10].trim();
-        if (p.length > 11) {
-            out[4] = p[11].trim();
-        }
+        proxy = proxiesList[selectedProxyIndex - 2];
+        saveOpt("selectedProxy", proxy);
+        saveOpt("selectedProxyIndex", selectedProxyIndex);
+        putProxy();
 
     } else {
-        for (i = 0; i < p.length; i++) {
-            out[i] = p[i].trim();
-        }
-    }
-    return out;
-}
 
-function loadConf(n, d) {
-    if (brs==="firefox") {
-        try {
-           // console.log("ltry val=" + n + " value=" + window.localStorage.getItem(n));
-            if (window.localStorage.getItem(n) === null) {
-                return "";
+        if (cyclerotate) {
+
+            if (shufflerotate) {
+                createNotification("Rotation", "End of the proxy rotation. Shuffling the list AND starting again from the top", "changeProxyNotification");
+                proxiesList = shuffle(proxiesList);
+                saveOpt("proxiesList", proxiesList);
+            } else {
+                createNotification("Rotation", "End of the proxy rotation. Starting again from the top", "changeProxyNotification");
             }
+
+            proxy = proxiesList[0];
+            saveOpt("selectedProxy", proxy);
+            saveOpt("selectedProxyIndex", 2);
+            putProxy();
+
+        } else {
+            console.log(" end rotation ");
+
+            clearInterval(rotateProxyTimer);
+            stopRotation();
+            createNotification("Rotation", "End of the proxy list was reached. Stoping the rotation", "changeProxyNotification");
+        }
+    }
+
+}
+
+function createNotification(title, message, v = "") {
+console.log("v="+v);
+    loadOpt("proxiesList", async (res) => {
+        if (res[v]) {
+            
+            chrome.notifications.create({
+                type: 'basic',
+                iconUrl: 'icons/icon128.png',
+                title: title,
+                message: message,
+                priority: 2
+            });
+        }
+    });
+            
+}
+
+
+
+function deleteRecentCookies() {
+    loadOpt("opt", async (res) => {
+        if (res.cookies) {
+            const oneHourAgo = Date.now() - 3600 * 1000 * res.timeInterval;
+
+            chrome.cookies.getAll({}, (cookies) => {
+                if (!cookies) {
+                    console.error("Failed to retrieve cookies.");
+                    return;
+                }
+
+                cookies.forEach((cookie) => {
+                    // Check if the cookie was created or modified in the last hour
+                    if (!cookie.expirationDate || (cookie.expirationDate * 1000 > oneHourAgo)) {
+                        const url = `http${cookie.secure ? 's' : ''}://${cookie.domain}${cookie.path}`;
+
+                        // Remove the cookie
+                        chrome.cookies.remove({url, name: cookie.name}, (result) => {
+                            if (result) {
+                                console.log(`Removed cookie: ${cookie.name} from ${url}`);
+                            } else {
+                                console.error(`Failed to remove cookie: ${cookie.name} from ${url}`);
+                            }
+                        });
+                    }
+                });
+            });
+
+            createNotification("Cookies were deleted", "Cookies were deleted", "deleteCookiesNotification");
+        }
+    });
+
+
+}
+function deleteOptions() {
+
+    console.log("deleteOptions");
+
+    var k = [];
+    var dataTypesToClear = {};
+    var n = 0;
+    loadOpt("opt", async (res) => {
+        deleteValues.forEach(del => {
             try {
-                return  JSON.parse(window.localStorage.getItem(n));
+
+                if (res[del.id]) {
+                    dataTypesToClear[del.id] = true;
+                    k[n] = del.id;
+                    n = n + 1;
+
+                }
             } catch (e) {
-                return  window.localStorage.getItem(n);
             }
-        } catch (e) {
-            console.log("loadConf err" + e + " val=" + n);
-            return "";
-        }
-    } else {
-        if (typeof localStorage[n] === 'undefined') {
-            return "";
-        } else {
-            
-         
-            return JSON.parse(localStorage[n]);
-       
-            
-        }
-    }
-}
-
-function validateProxy(proxy, port, user, pass) {
-    error = "";
-    if (proxy.length < 7) {
-        error = "proxy " + proxy + " is invalid";
-    } else if (isNaN(parseInt(port))) {
-        error = "port " + port + " is invalid";
-    }
-    return error;
-}
-
-
-function getProxyIndex(proxyTxt) {
-    proxiesList = getProxiesList();
-    for (i = 0; i < proxiesList.length; i++) {
-        if (proxyTxt == proxiesList[i].trim()) {
-            return i + 2;
-        }
-    }
-    return -1;
-}
-
-function getPrivacyToRemove() {
-
-    privacy = loadConf("privacy");
-    var privacyToRemove = [];
-    var toRemove = new Object();
-    for (i = 0; i < deleteValues.length; i++) {
-
-        try {
-
-
-            if (privacy[deleteValues[i]]) {
-              
-                    privacyToRemove.push(deleteValues[i]);
-                    toRemove[deleteValues[i]] = true;
-                
-            }
-        } catch (e) {
-        }
-
-    }
-    var r = [];
-    r["privacyToRemove"] = privacyToRemove;
-    r["toRemove"] = toRemove;
-    return r;
-}
-
-
-function forcePrivacy() {
-    var toRemove = getPrivacyToRemove();
-    var privacyToRemove = toRemove["privacyToRemove"];
-    if (privacyToRemove !== "") {
-        var a = new Date().getTime();
-        var b = 1000 * 60 * 60 * parseInt(loadConf("timeInterval", 24));
-        var c = a - b;
-        
-        
-        if (brs==="firefox") {
-          if (toRemove["toRemove"].hasOwnProperty("localStorage")){
-              toRemove["toRemove"]["localStorage"]=false;
-
-                chrome.browsingData.remove(  {},{localStorage:true});
-          }
-            chrome.browsingData.remove(
-                    {since: c},
-             toRemove["toRemove"]
-                    ).then(function(){      notify("Privacy", privacyToRemove.join(",") + ' were deleted', "deleteNotification");});
-        } else {
-            chrome.browsingData.remove({
-                "since": c,
-                "originTypes": {
-                    "protectedWeb": true,
-                    "unprotectedWeb": true
-                }
-            }, toRemove["toRemove"], function () {
-                notify("Privacy", privacyToRemove.join(",") + ' were deleted', "deleteNotification");
-            });
-        }
-    }
-
-}
-
-
-
-function cancelProxy(silent = false) {
-
-    var config = {
-        mode: "direct"
-    };
-    chrome.proxy.settings.set({
-        value: config,
-        scope: 'regular'
-    },
-            function () {});
-    if (!silent) {
-        saveConf("lastProxy", "NOPROXY");
-        notify("Proxy disabled", "");
-        chrome.browserAction.setIcon({path: "img/icon2.png"});
-        displayCurrentCountry();
-        reloadTab();
-}
-}
-
-
-function displayCurrentCountry() {
-
-    if (rotateTimerOn) {
-        text = getProxyRotationRemaining() + "S";
-    } else if (loadConf("selectedProxyIndex") > 1) {
-        try {
-            p = parseProxy(loadConf("proxy"));
-            locations = JSON.parse(loadConf("locations"));
-            text = locations[p[0]];
-        } catch (e) {
-        }
-    }
-
-    if (typeof text === 'undefined') {
-        text = "";
-    }
-
-    chrome.browserAction.setBadgeBackgroundColor({color: "#FFFFFF"});
-    chrome.browserAction.setBadgeText({text: text});
-}
-
-
-function setProxy(proxyTxt) {
-
-    p = parseProxy(proxyTxt);
-    proxyCurrent = p[0];
-    portCurrent = p[1];
-    userCurrent = p[2];
-    passCurrent = p[3];
-    error = validateProxy(proxyCurrent, portCurrent, userCurrent, passCurrent);
-    if (error != "") {
-        alertTxt(error, "error setProxy");
-    } else {
-
-        chrome.browserAction.setIcon({path: "img/icon.png"});
-        saveConf("lastProxy", proxyTxt);
-        saveConf("proxy", proxyCurrent);
-        saveConf("proxyPort", portCurrent);
-        saveConf("proxyUser", userCurrent);
-        saveConf("proxyPass", passCurrent);
-        saveConf("selectedProxyIndex", getProxyIndex(proxyTxt));
-        r = getPrivacyToRemove();
-        var privacyToRemove = r["privacyToRemove"];
-        var toRemove = r["toRemove"];
-        var randomAgent = loadConf("userAgents").split('\n');
-        if (loadConf("selectedAgentIndex") == 1) {
-            saveConf("agent", randomAgent[1 + Math.floor(Math.random() * randomAgent.length)]);
-            notify("User Agent", "User agent was changed RANDOMLY to " + loadConf("agent"), "agentNotification");
-        } else if (loadConf("agent") != "NOCHANGE") {
-            notify("User Agent", "User agent was changed to " + loadConf("agent"), "agentNotification");
-        }
-
-        if (privacyToRemove != "") {
-            var a = new Date().getTime();
-            var b = 1000 * 60 * 60 * parseInt(loadConf("timeInterval", 24));
-            var c = a - b;
-            if (brs==="firefox") {
-                chrome.browsingData.remove({
-                    "originTypes": {
-                        "unprotectedWeb": true
-                    }
-                }, toRemove, function () {
-                    putProxy(proxyCurrent, portCurrent, privacyToRemove);
-                });
-            } else {
-                chrome.browsingData.remove({
-                    "since": c,
-                    "originTypes": {
-                        "protectedWeb": true,
-                        "unprotectedWeb": true
-                    }
-                }, toRemove, function () {
-                    putProxy(proxyCurrent, portCurrent, privacyToRemove);
-                });
-            }
-        } else {
-            putProxy(proxyCurrent, portCurrent, "");
-        }
-
-    }
-}
-
-
-
-function putProxy(proxy, port, privacyToRemove, silent = false) {
-    if (privacyToRemove != "" && !silent) {
-        notify("Privacy", privacyToRemove.join(",") + ' were deleted', "deleteNotification");
-    }
-
-    proxyUsed++;
-    exclude = getExcludeList();
-    if (port === '4444') {
-        scheme = "http";
-        port = 80;
-    } else if (loadConf("proxiesType") == 1) {
-        scheme = "socks4";
-    } else if (loadConf("proxiesType") == 2) {
-        scheme = "socks5";
-    } else {
-        scheme = "http";
-    }
-
-
-    if (brs==="firefox") {
-
-        proxySettings = {
-            proxyType: "manual"
-        };
-        //if (scheme === 'http') {
-        proxySettings['http'] = proxy + ":" + port;
-        proxySettings['httpProxyAll'] = true;
-        proxySettings['autoLogin'] = true;
-        proxySettings['passthrough'] = exclude;
-
-        if (loadConf("proxiesType") == 1) {
-            proxySettings['socksVersion'] = 4;
-
-        } else if (loadConf("proxiesType") == 2) {
-            proxySettings['socksVersion'] = 5;
-        }
-
-        browser.proxy.settings.set({value: proxySettings}).then(proxyPut, proxyPutError);
-        function proxyPut(e) {
-            notifyProxy();
-        }
-        function proxyPutError(e) {
-            alertTxt(e.toString(), "error putProxy ");
-        }
-
-
-    } else {
-        var config = {
-            mode: "fixed_servers",
-            rules: {
-                singleProxy: {
-                    scheme: scheme,
-                    host: proxy,
-                    port: parseInt(port)
-                },
-                bypassList: [exclude]
-            }
-        };
-        failedLogins = 0;
-        chrome.proxy.settings.set({
-            value: config,
-            scope: 'regular'
-        }, notifyProxy
-                );
-}
-}
-
-function notifyProxy() {
-    notify("Proxy set", proxyCurrent, "proxyNotification");
-    displayCurrentCountry();
-    reloadTab();
-}
-function reloadTab() {
-    if (loadConf("autoReload")) {
-        chrome.tabs.reload();
-    }
-}
-
-function onProxyError(details) {
-    
-}
-
-
-function makeLogin(details, callbackFn) {
-    if (brs==="firefox") {
-        if (details.isProxy === true) {
-            console.log("onAuthRequired3!");
-            failedLogins++;
-            if (failedLogins < 4) {
-                return {authCredentials: {username: loadConf("proxyUser"), password: loadConf("proxyPass")}
-                }
-            }
-        }
-
-    } else {
-
-        if (details.isProxy === true) {
-            failedLogins++;
-            if (failedLogins < 4) {
-                try {
-                    callbackFn({
-                        authCredentials: {
-                            username: loadConf("proxyUser"),
-                            password: loadConf("proxyPass")
-                        }
-                    });
-                } catch (e) {
-                    return  callbackFn({cancel: true});
-                }
-            } else {
-                return  callbackFn({cancel: true});
-            }
-
-        } else {
-            callbackFn();
-        }
-    }
-}
-
-
-var requestFilter = {
-    urls: ["<all_urls>"]
-},
-        extraInfoSpec = ['requestHeaders', 'blocking'],
-        handler = function (details) {
-
-            var headers = details.requestHeaders,
-                    blockingResponse = {};
-            for (var i = 0, l = headers.length; i < l; ++i) {
-                if (headers[i].name === 'User-Agent' && loadConf("agent") !== 'NOCHANGE') {
-                    headers[i].value = loadConf("agent");
-                }
-
-            }
-            headers.push({name: "DNT", value: "1"});
-            blockingResponse.requestHeaders = headers;
-            return blockingResponse;
-        };
-chrome.webRequest.onBeforeSendHeaders.addListener(handler, requestFilter, extraInfoSpec);
-function notify(title, text, type = "") {
-
-    if (type === "" || loadConfFromArr("settings", type) == 1) {
-        var opt = {
-            type: "basic",
-            title: title,
-            message: text,
-            iconUrl: "img/notification.png"
-        };
-        chrome.notifications.create("", opt, function () {});
-}
-}
-
-
-chrome.webRequest.onBeforeRequest.addListener(
-        blockUrls,
-        {
-            urls: ["<all_urls>"]
-        }, ["blocking"]
-        );
-function blockUrls(details) {
-
-    badURLs = loadConf("blockURLs").split("\n");
-    for (i = 0; i < badURLs.length; i++) {
-        if (badURLs[i].length > 2 && details.url.indexOf(badURLs[i]) > -1) {
-            notify("Blocked", details.url);
-            return {cancel: true};
-        }
-
-    }
-}
-
-function webRTC() {
-
-    if (brs==="firefox") {
-        if (loadConfFromArr("block", "webRTC") != false) {
-            browser.privacy.network.webRTCIPHandlingPolicy.set({value: 'disable_non_proxied_udp'});
-            browser.privacy.network.peerConnectionEnabled.set({value: false});
-
-        } else {
-            browser.privacy.network.webRTCIPHandlingPolicy.set({value: 'default'});
-            browser.privacy.network.peerConnectionEnabled.set({value: true});
-
-        }
-    } else {
-        if (loadConfFromArr("block", "webRTC") != false) {
-
-            chrome.privacy.network.webRTCIPHandlingPolicy.set({
-                value: chrome.privacy.IPHandlingPolicy.DISABLE_NON_PROXIED_UDP
-            });
-        } else {
-
-            chrome.privacy.network.webRTCIPHandlingPolicy.set({
-                value: chrome.privacy.IPHandlingPolicy.DEFAULT_PUBLIC_AND_PRIVATE_INTERFACES
-            });
-        }
-    }
-
-}
-
-//chrome.runtime.onSuspend.addListener(function (details) {
-//    clearProxy();
-//});
-
-chrome.runtime.onStartup.addListener(function (details) {
-    displayCurrentCountry();
-});
-
-chrome.runtime.onInstalled.addListener(function (details) {
-
-    date = Math.random();
-    if (loadConf("excludeList") == "") {
-        block = new Object();
-        block["webRTC"] = 1;
-        saveConf("block", block);
-        webRTC();
-        privacy = new Object();
-        privacy["localStorage"] = 1;
-        privacy["cache"] = 1;
-        privacy["cookies"] = 1;
-        privacy["indexedDB"] = 1;
-        saveConf("privacy", privacy);
-        saveConf("userAgents", userAgents);
-        saveConf("agent", "NOCHANGE");
-        saveConf("selectedAgentIndex", 0);
-        saveConf("rotationDelay", 60);
-        saveConf("timeInterval", 24);
-        saveConf("timeIntervalIndex", 2);
-        saveConf("autoReload", 1);
-        saveConf("excludeList", "localhost");
-    }
-
-    if (loadConf("urlMinutes") < 5) {
-        saveConf("urlMinutes", 600);
-    }
-
-    saveConf("getLocations", 1);
-    if (brs==="firefox" || loadConf("ver") !== 32) {
-        var settings = new Object();
-        settings["proxyNotification"] = 1;
-        settings["deleteNotification"] = 1;
-        settings["agentNotification"] = 1;
-        saveConf("settings", settings);
-    }
-    saveConf("ver", "33");
-    if (loadConf("date") === "") {
-        saveConf("date", date);
-    }
-
-    if (brs==="chrome") {
-        chrome.tabs.update({
-            url: "about:blank"
         });
-    }
-});
 
 
-if (brs==="firefox") {
+        if (k.length > 0) {
+            createNotification("Deleted", k.join(',') + " were deleted", "deleteCookiesNotification");
+        } else {
+            return 0;
+        }
 
-    chrome.proxy.onError.addListener(onProxyError);
-    chrome.webRequest.onAuthRequired.addListener(
-            makeLogin, {urls: ["<all_urls>"]}, ['blocking']);
-} else {
+        var a = new Date().getTime();
+        var b = 1000 * 60 * 60 * parseInt(res["timeInterval"]);
+        var c = a - b;
 
-    chrome.proxy.onProxyError.addListener(onProxyError);
-    chrome.webRequest.onAuthRequired.addListener(
-            makeLogin, {
-                urls: ["<all_urls>"]
-            }, ['asyncBlocking']
-            );
+        chrome.browsingData.remove({
+            "since": c
+        },
+                dataTypesToClear
+                , () => {
+
+        });
+
+    });
 }
-chrome.contextMenus.create({title: "Delete cookies and cache", contexts: ["all"], onclick: forcePrivacy});
 
 
-function alertTxt(txt, title = "alert") {
-    if (brs==="firefox") {
-        notify(title, txt);
-        chrome.runtime.sendMessage({"alert": txt});
-    } else {
-        alert(txt);
-}
-}
+
+
+chrome.webRequest.onAuthRequired.addListener(
+        function (details, callbackFn) {
+            console.log("onAuthRequired 1 ");
+            loadOpt("proxiesList", async (res) => {
+
+                proxy = res['selectedProxy'];
+                p = proxy.split(":");
+                console.log("onAuthRequired 2 " + proxy);
+                if (p.length > 3) {
+                    console.log("onAuthRequired 2 " + p[2] + " " + p[3]);
+                    callbackFn({
+                        authCredentials: {username: p[2], password: p[3]}
+                    });
+                }
+            });
+        },
+        {urls: ["<all_urls>"]},
+        ['asyncBlocking']
+        );
+

@@ -1,41 +1,42 @@
 {
 "update_url": "https://clients2.google.com/service/update2/crx",
 
-    "manifest_version": 2,
+    "manifest_version": 3,
     "name": "BP Proxy Switcher",
     "description": "Change your proxies with one click",
-    "version": "4.0.5",
-
-    "browser_action": {
-        "default_icon": "img/icon.png",
-        "default_popup": "popup.html"
-    },
-
-
-
-    "icons": {
-        "16": "img/icon.png",
-        "48": "img/icon48.png",
-        "128": "img/icon128.png"
-    },
-
+    "version": "5.7",
     "permissions": [
-        "storage", 
         "proxy",
-        "privacy",
-        "notifications",  
-        "webRequest",
-        "webRequestBlocking",
-        "<all_urls>",
-        "tabs",
+        "storage",
+        "notifications",
+        "declarativeNetRequest",
+        "declarativeNetRequestWithHostAccess",
+        "cookies",
         "browsingData",
-        "contextMenus"
+        "contextMenus",
+        "privacy",
+        "webRequest",
+        "webRequestAuthProvider"
     ],
 
+    "host_permissions": [
+        "https://testmyproxies.com/*",
+        "<all_urls>"
+    ],
     "background": {
-        "scripts": ["background.js"],
-        "persistent": true
+        "service_worker": "background.js"
+    },
+    "action": {
+        "default_popup": "popup.html",
+        "default_icon": {
+            "16": "icons/icon16.png",
+            "48": "icons/icon48.png",
+            "128": "icons/icon128.png"
+        }
+    },
+    "icons": {
+        "16": "icons/icon16.png",
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png"
     }
-    ,
-    "incognito": "spanning"
 }

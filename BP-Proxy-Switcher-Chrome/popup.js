@@ -1,80 +1,256 @@
+var firefox = false;
+var locations, rotationDelay = 5, rotating, agents, cyclerotate, shufflerotate;
+;
+var agentsDefaults = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.5938.132 Safari/537.36",
+    "Mozilla/5.0 (Linux; Android 12; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.5938.132 Mobile Safari/537.36",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_5_2) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Safari/605.1.15",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.5938.132 Safari/537.36 Edg/117.0.2045.55",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:118.0) Gecko/20100101 Firefox/118.0",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/117.0.5938.132 Mobile/15E148 Safari/604.1",
+    "Mozilla/5.0 (Linux; Android 13; SM-G998B) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/21.0 Chrome/117.0.5938.132 Mobile Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.5938.132 Safari/537.36 OPR/103.0.4928.45",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.5938.132 Safari/537.36 Brave/117.1.56.120"
+];
 
-document.addEventListener('DOMContentLoaded', bpOnLoad, false);
-var bg, rotationTimmer;
+const deleteValues = [
+    {
+        id: "cache",
+        description: "temporary files stored to speed up loading"
+    },
+    {
+        id: "cookies",
+        description: "data stored by websites to remember you"
+    },
+    {
+        id: "history",
+        description: "list of websites you have visited"
+    },
+    {
+        id: "downloads",
+        description: "history of downloaded files"
+    },
+    {
+        id: "formData",
+        description: "information entered into forms"
+    },
+    {
+        id: "localStorage",
+        description: "website-specific stored data"
+    },
+    {
+        id: "passwords",
+        description: "saved login credentials"
+    },
+    {
+        id: "fileSystems",
+        description: "data stored by the File System API"
+    },
+    {
+        id: "indexedDB",
+        description: "noSQL database for client-side storage"
+    },
+    {
+        id: "serviceWorkers",
+        description: "background scripts for handling requests"
+    },
+    {
+        id: "webSQL",
+        description: "database storage in browsers"
+    }
+];
 
 function bpOnLoad() {
 
-    bg = chrome.extension.getBackgroundPage();
-
     document.getElementById("editProxyList").addEventListener("click", editProxyList);
-    document.getElementById("editUserAgentList").addEventListener("click", editUserAgentList);
-    document.getElementById("selectProxy").addEventListener("change", selectProxyChange);
-    document.getElementById("selectUserAgent").addEventListener("change", selectUserAgent);
-    document.getElementById("addProxyOK").addEventListener("click", loadProxiesFromUrl);
-    document.getElementById("addUserAgentOK").addEventListener("click", EditUserAgentOK);
-    document.getElementById("deleteOptions").addEventListener("click", deleteOptions);
-    document.getElementById("blockOptions").addEventListener("click", blockOptions);
-    document.getElementById("bandwidthOptions").addEventListener("click", bandwidthOptions)
-    document.getElementById("bandwidthOK").addEventListener("click", bandwidthOK)
-    document.getElementById("optionsOK").addEventListener("click", optionsOK);
-    document.getElementById("blockOK").addEventListener("click", blockOK);
+    document.getElementById("addProxyOK").addEventListener("click", addProxyOK);
     document.getElementById("addProxyCancel").addEventListener("click", addProxyCancel);
-    document.getElementById("addUserAgentCancel").addEventListener("click", addProxyCancel);
-    document.getElementById("about").addEventListener("click", about);
-    document.getElementById("aboutOK").addEventListener("click", aboutOk);
+    document.getElementById("selectProxy").addEventListener("change", selectProxyChange);
     document.getElementById("autoReload").addEventListener("click", autoReloadClick);
+
+    document.getElementById("editUserAgentList").addEventListener("click", editUserAgentList);
+    document.getElementById("addUserAgentCancel").addEventListener("click", addProxyCancel);
+    document.getElementById("addUserAgentOK").addEventListener("click", editUserAgentOK);
+
+    document.getElementById("selectUserAgent").addEventListener("change", selectUserAgent);
+
+
+    document.getElementById("excludeOptions").addEventListener("click", excludeOptions);
+    document.getElementById("excludeOK").addEventListener("click", excludeOK);
+
+    document.getElementById("deleteOptions").addEventListener("click", deleteOptions);
+    document.getElementById("optionsOK").addEventListener("click", optionsOK);
+
+    document.getElementById("blockOptions").addEventListener("click", blockOptions);
+
+    document.getElementById("blockOK").addEventListener("click", blockOK);
+
     document.getElementById("rotateOK").addEventListener("click", rotateOK);
     document.getElementById("rotateCancel").addEventListener("click", rotateCancel);
     document.getElementById("stopRotation").addEventListener("click", stopRotation);
+
+    document.getElementById("about").addEventListener("click", about);
+    document.getElementById("aboutOK").addEventListener("click", aboutOk);
+
     document.getElementById("testMyProxies").addEventListener("click", testMyProxies);
-    document.getElementById("excludeOptions").addEventListener("click", excludeOptions);
-    document.getElementById("excludeOK").addEventListener("click", excludeOK);
-    document.getElementById("forcePrivacy").addEventListener("click", forcePrivacy);
+
     document.getElementById("proxiesType").addEventListener("change", proxiesTypeChanged);
-    document.getElementById("proxyMode0").addEventListener("click", function () {
-        switchProxyMode(0)
+    document.getElementById("forcePrivacy").addEventListener("click", forcePrivacy);
+    document.getElementById("bandwidthOptions").addEventListener("click", bandwidthOptions);
+    document.getElementById("bandwidthOK").addEventListener("click", bandwidthOK);
+
+    updateProxySelect();
+
+
+}
+function bandwidthOptions() {
+    loadOpt("excludeList", async (res) => {
+        document.getElementById('changeProxyNotification').checked = res.changeProxyNotification;
+        document.getElementById('deleteCookiesNotification').checked = res.deleteCookiesNotification;
     });
-    document.getElementById("proxyMode1").addEventListener("click", function () {
-        switchProxyMode(1)
-    });
 
-    loadProxies();
-    populateProxies();
-    populateUserAgents();
-
-    selectCurrentProxy();
-
-    chrome.runtime.onMessage.addListener(
-            function (request, sender, sendResponse) {
-
-                if (request.call === "loadProxiesFromUrl") {
-                    if (request.error === "") {
-                        document.getElementById("proxiesTextArea").value = bg.loadConf("proxiesList");
-                        //   editProxyListOK(false);
-                        notify("Autoload", "The proxy list was automatically loaded now from " + bg.loadConf("urlProxies"));
-                    } else {
-                        alert(request.error);
-                    }
-                } else if (request.call === "getLocations") {
-                    editProxyListOKFinish(false);
-                } else if (request.hasOwnProperty("alert")) {
-                    alert(request.alert);
-                }
-            });
-
-    bg.shouldLoadProxiesFromUrl();
-    shouldDisplayPromo();
+    switchTab(8);
 }
 
+function bandwidthOK() {
+    saveOpt("changeProxyNotification", document.getElementById('changeProxyNotification').checked);
+    saveOpt("deleteCookiesNotification", document.getElementById('deleteCookiesNotification').checked);
+    switchTab(1);
+}
+
+function forcePrivacy() {
+    chrome.runtime.sendMessage({action: 'deleteOptions'});
+}
 
 function proxiesTypeChanged() {
-    if (document.getElementById("proxiesType").selectedIndex > 1) {
-        alert("This browser doesn't support SOCKS proxies with user/pass. Please make sure that always your SOCKS proxies are in the format IP:port");
+    if (document.getElementById("proxiesType").selectedIndex > 0) {
+        document.getElementById("socksWarning").style.display = "block";
+    } else {
+        document.getElementById("socksWarning").style.display = "none";
     }
 
 }
+function testMyProxies() {
+    //  $("#typeOfProxies").val(bg.loadConf("proxiesType"));
+    $("#testmyproxiesForm").submit();
+}
 
-function swtichTab(tab) {
+function editUserAgentOK() {
+    switchTab(1);
+    agents = sanitizeProxies(document.getElementById("userAgentsTextArea").value, 1);
+    saveOpt("userAgents", agents);
+    updateProxySelect();
+}
+
+function editUserAgentList() {
+    document.getElementById("userAgentsTextArea").value = agents.join("\n");
+    switchTab(6);
+}
+
+function about() {
+    document.getElementById("monkey").src = getImageURL("img/monkey.gif");
+
+    switchTab(4);
+}
+
+function aboutOk() {
+    switchTab(1);
+}
+
+function stopRotation() {
+    chrome.runtime.sendMessage({action: 'stopRotation', text: ""});
+}
+
+function stopRotationBg() {
+    rotating = false;
+    document.getElementById("rotatingText").innerHTML = "<b>Rotation complete</b>";
+    $('#rotatingText').delay(10000).fadeOut('slow');
+
+    document.getElementById("stopRotation").style.display = "none";
+
+
+}
+
+function rotateCancel() {
+    showHide('proxySelectDiv', 'proxyRotationDiv');
+    switchTab(1);
+}
+
+function rotateOK() {
+    rotationDelayNew = document.getElementById('rotateSeconds').value;
+
+    loadOpt("excludeList", async (res) => {
+
+
+        if (rotationDelayNew < 1) {
+            alert("Please enter a bigger delay");
+        } else if (res.proxiesList.toString().split(",").length < 3) {
+            alert("You need to have at least 3 proxies on your list");
+        } else {
+
+            saveOpt("rotationDelay", rotationDelayNew);
+            saveOpt("cyclerotate", document.getElementById('cyclerotate').checked);
+            saveOpt("shufflerotate", document.getElementById('shufflerotate').checked);
+
+            rotationDelay = rotationDelayNew;
+
+            switchTab(1);
+            chrome.runtime.sendMessage({action: 'startRotation', text: rotationDelay});
+            document.getElementById("stopRotation").style.display = "block";
+
+            $("#testMyproxies").hide();
+        }
+    });
+}
+
+
+function showHide(id1, id2) {
+    document.getElementById(id1).style.display = "block";
+    document.getElementById(id2).style.display = "block";
+
+    if (id2 == "proxyRotationDiv") {
+        $("#testMyProxies").show();
+    }
+
+    if (id1 == "proxyRotationDiv") {
+        $("#testMyProxies").hide();
+    }
+}
+function optionsOK() {
+
+    deleteValues.forEach(del => {
+        saveOpt(del.id, document.getElementById(del.id).checked);
+    }
+    );
+
+    saveOpt("timeIntervalIndex", document.getElementById("timeInterval").selectedIndex);
+    saveOpt("timeInterval", document.getElementById("timeInterval").value);
+
+    switchTab(1);
+
+}
+
+function excludeOptions() {
+    switchTab(10);
+    loadOpt("excludeList", async (res) => {
+        if (res.excludeList) {
+            document.getElementById("excludeListTextarea").value = res.excludeList;
+        }
+    });
+}
+
+function excludeOK() {
+    const exclude = Array.from(sanitizeProxies(document.getElementById("excludeListTextarea").value));
+    saveOpt("excludeList", exclude.join("\n"));
+
+    chrome.runtime.sendMessage({action: 'putProxy', text: ""});
+
+    switchTab(1);
+}
+
+
+function switchTab(tab) {
 
     for (i = 1; i < 11; i++) {
         if (i === tab) {
@@ -102,320 +278,336 @@ function swtichTab(tab) {
 
 }
 
-function rotateCancel() {
-    showHide('proxySelectDiv', 'proxyRotationDiv');
-    swtichTab(1);
-}
+function deleteOptions() {
+    switchTab(3);
 
-function stopLocations() {
-    swtichTab(1);
-}
+    // Load options using loadOpt and process them
+    loadOpt("opt", async (res) => {
+        // if (res.blockURLs) {
+        clearForm("privacy"); // Clear the existing form elements in 'privacy'
 
-function rotateOK() {
-    rotationDelayNew = document.getElementById('rotateSeconds').value;
+        // Iterate over deleteValues array to create checkboxes dynamically
+        deleteValues.forEach(del => {
+            // Create a div for each checkbox and description
+            var div = document.createElement("div");
+            div.style.marginBottom = "3px"; // Add space between rows
 
-    if (rotationDelayNew < 5) {
-        alert("Please enter bigger than 5 seconds");
-    } else if (bg.getProxiesList().length < 3) {
-        alert("You need to have at least 3 proxies on your list");
-    } else {
+            // Create checkbox input element
+            var option = document.createElement("input");
+            option.type = "checkbox";
+            option.id = del.id; // Set the ID of the checkbox
 
-        bg.saveConf("rotationDelay", rotationDelayNew);
-        bg.saveConf("cyclerotate", document.getElementById('cyclerotate').checked);
-        bg.saveConf("shufflerotate", document.getElementById('shufflerotate').checked);
-        swtichTab(1);
-        rotationTimmer = setInterval(rotateNow, 1000);
-        bg.startProxyRotation();
-        $("#testMyproxies").hide();
-        showHide('proxyRotationDiv', 'proxySelectDiv');
-    }
-}
-
-
-function rotateNow() {
-    remaining = bg.getProxyRotationRemaining();
-    document.getElementById('rotatingText').innerHTML = bg.loadConf("proxy") + "<br> Rotating to the next proxy<br> in " + (remaining + 1) + " seconds";
-    if (!bg.rotateTimerOn) {
-        stopRotation();
-    }
-}
-
-
-function autoRotateOptions() {
-    swtichTab(5);
-}
-
-function about() {
-    document.getElementById("monkey").src = getImageURL("img/monkey.gif");
-
-    swtichTab(4);
-}
-
-function aboutOk() {
-    swtichTab(1);
-}
-
-function selectUserAgent() {
-    bg.saveConf("agent", document.getElementById("selectUserAgent").value);
-    bg.saveConf("selectedAgentIndex", document.getElementById("selectUserAgent").selectedIndex);
-
-}
-
-function selectProxyChange() {
-    bg.saveConf("selectedProxyIndex", document.getElementById("selectProxy").selectedIndex);
-
-    var select = document.getElementById("selectProxy");
-
-    if (select.value == "NOPROXY") {
-        bg.cancelProxy();
-    } else if (select.value == "AUTOROTATE") {
-        swtichTab(5);
-        document.getElementById('rotateSeconds').value = bg.loadConf("rotationDelay");
-        document.getElementById('cyclerotate').checked = bg.loadConf("cyclerotate");
-        document.getElementById('shufflerotate').checked = bg.loadConf("shufflerotate");
-
-    } else {
-
-        bg.setProxy(select.value);
-
-    }
-}
-
-
-function bandwidthOptions() {
-    clearForm("settingsContainer");
-    settings = bg.loadConf("settings");
-    for (i = 0; i < bg.settingsValues.length; i++) {
-        var div = document.createElement("div");
-        var option = document.createElement("input");
-        option.type = "checkbox";
-        try {
-            if (settings[bg.settingsValues[i]]) {
+            // Check if the current delete value is set in the response and set the checkbox accordingly
+            if (res[del.id]) {
                 option.checked = true;
             }
-        } catch (e) {
-        }
-        option.id = bg.settingsValues[i];
-        div.appendChild(option);
-        div.appendChild(document.createTextNode(bg.settingsValuesTxt[bg.settingsValues[i]]));
-        document.getElementById("settingsContainer").appendChild(div);
-    }
 
-    swtichTab(8);
+            // Append checkbox to the div
+            div.appendChild(option);
+
+            // Create a label with bold text for ID and description
+            var label = document.createElement("label");
+            label.htmlFor = del.id; // Associate label with checkbox
+
+            // Create bold text for del.id
+            var boldText = document.createElement("underline");
+            boldText.textContent = `${del.id} `;
+            label.appendChild(boldText);
+
+            label.appendChild(document.createTextNode("(" + del.description + ")"));
+
+            // Append label to the div
+            div.appendChild(label);
+
+            // Append the div to the 'privacy' container
+            document.getElementById("privacy").appendChild(div);
+        });
+
+        // Set the selected index for the timeInterval element
+        document.getElementById("timeInterval").selectedIndex = res["timeIntervalIndex"];
+
+        // }
+    });
 }
 
 function blockOptions() {
+    loadOpt("opt", async (res) => {
 
-    clearForm("blockContainer");
-    block = bg.loadConf("block");
-    for (i = 0; i < bg.blockValues.length; i++) {
-        var div = document.createElement("div");
-        var option = document.createElement("input");
-        option.type = "checkbox";
-        try {
-            if (bg.loadConfFromArr("block", bg.blockValues[i])) {
-                option.checked = true;
-            }
-        } catch (e) {
-        }
-        option.id = bg.blockValues[i];
-        div.appendChild(option);
-        var txt = bg.blockValues[i];
-        if (bg.blockValues[i] == 'webRTC') {
-            txt = 'webRTC (improves privacy but could block some videostreaming too)';
-        }
-        div.appendChild(document.createTextNode(txt));
-        document.getElementById("blockContainer").appendChild(div);
-    }
-    document.getElementById("blockURLs").value = bg.loadConf("blockURLs")
-    swtichTab(7);
+        document.getElementById("blockURLs").value = makeVal(res.blockURLs, "");
+        document.getElementById("webRTC").checked = res.webRTC;
 
-}
-
-
-function forcePrivacy() {
-    optionsOK();
-    bg.forcePrivacy();
-
-}
-
-function deleteOptions() {
-
-    clearForm("privacy");
-
-    for (i = 0; i < bg.deleteValues.length; i++) {
-        var div = document.createElement("div");
-        var option = document.createElement("input");
-        option.type = "checkbox";
-        try {
-            if (bg.loadConfFromArr("privacy", bg.deleteValues[i])) {
-                option.checked = true;
-            }
-        } catch (e) {
-        }
-        option.id = bg.deleteValues[i];
-        div.appendChild(option);
-        div.appendChild(document.createTextNode(bg.deleteValues[i]));
-        document.getElementById("privacy").appendChild(div);
-    }
-
-    document.getElementById("timeInterval").selectedIndex = bg.loadConf("timeIntervalIndex");
-    swtichTab(3);
-}
-
-function bandwidthOK() {
-    settings = new Object();
-    for (i = 0; i < bg.settingsValues.length; i++) {
-        try {
-            settings[bg.settingsValues[i]] = document.getElementById(bg.settingsValues[i]).checked;
-        } catch (e) {
-        }
-    }
-    bg.saveConf("settings", settings);
-
-    swtichTab(1);
-
+    });
+    switchTab(7);
 }
 
 
 function blockOK() {
+    changeWebRtc(document.getElementById("webRTC").checked);
 
-    if (document.getElementById("blockContainer").childNodes.length > 0) {
-
-        block = new Object();
-        for (i = 0; i < bg.blockValues.length; i++) {
-            try {
-                block[bg.blockValues[i]] = document.getElementById(bg.blockValues[i]).checked;
-            } catch (e) {
-            }
-        }
-
-        bg.saveConf("blockURLs", document.getElementById("blockURLs").value);
-        bg.saveConf("block", block);
-    }
+    saveOpt("webRTC", document.getElementById("webRTC").checked);
+    saveOpt("blockURLs", document.getElementById("blockURLs").value);
 
 
-    bg.webRTC();
+    blocked = sanitizeProxies(document.getElementById("blockURLs").value);
 
-    swtichTab(1);
+    chrome.runtime.sendMessage({action: 'updateBlocked', urls: blocked});
+
+    switchTab(1);
 }
 
-function optionsOK() {
 
-    if (document.getElementById("privacy").childNodes.length > 0) {
-        privacyNew = new Object();
-        for (i = 0; i < bg.deleteValues.length; i++) {
-            try {
-                privacyNew[bg.deleteValues[i]] = document.getElementById(bg.deleteValues[i]).checked;
-            } catch (e) {
-            }
-        }
-        bg.saveConf("privacy", privacyNew);
-        bg.saveConf("timeIntervalIndex", document.getElementById("timeInterval").selectedIndex);
-        bg.saveConf("timeInterval", document.getElementById("timeInterval").value);
-    }
+function changeWebRtc(block) {
 
-
-    swtichTab(1);
+    chrome.privacy.network.webRTCIPHandlingPolicy.set({
+        value: block ? 'disable_non_proxied_udp' : 'default',
+        scope: 'regular'
+    });
 }
 
+function updateRules(userAgent) {
+
+    if (userAgent === "NO CHANGE") {
+        chrome.declarativeNetRequest.updateDynamicRules({
+            removeRuleIds: [1]
+        });
+
+    } else {
+        const rule = {
+            "id": 1,
+            "priority": 1,
+            "action": {
+                "type": "modifyHeaders",
+                "requestHeaders": [
+                    {
+                        "header": "User-Agent",
+                        "operation": "set",
+                        "value": userAgent
+                    }
+                ]
+            },
+            "condition": {
+                "urlFilter": "*",
+                "resourceTypes": ["main_frame", "sub_frame"]
+            }
+        };
+
+        chrome.declarativeNetRequest.updateDynamicRules({
+            removeRuleIds: [1],
+            addRules: [rule]
+        });
+    }
+}
 
 function editProxyList() {
-    document.getElementById("proxiesTextArea").value = bg.loadConf("proxiesList");
-    document.getElementById("getLocations").checked = bg.loadConf("getLocations");
-    document.getElementById("proxiesType").selectedIndex = bg.loadConf("proxiesType");
+    switchTab(2);
+    loadOpt("proxiesList", async (res) => {
+        if (res.proxiesList) {
+            document.getElementById("proxiesTextArea").value = res.proxiesList.join("\n");
+        }
+        document.getElementById("getLocations").checked = res.getLocations;
 
-    swtichTab(2);
-    switchProxyMode(bg.loadConf("proxyMode"));
+
+    });
+
 
 }
 
-function editUserAgentList() {
-    document.getElementById("userAgentsTextArea").value = bg.userAgents;
-    swtichTab(6);
+
+function addProxyOK() {
+    switchTab(1);
+    const proxies = sanitizeProxies(document.getElementById("proxiesTextArea").value);
+    const getLocations = document.getElementById("getLocations").checked;
+    saveOpt("proxiesList", proxies);
+    saveOpt("proxiesType", document.getElementById("proxiesType").selectedIndex);
+    saveOpt("getLocations", getLocations); //
+
+    if (proxies.length > 0 && getLocations) {
+        fetchProxyLocations(proxies, function () {
+            updateProxySelect(true);
+        });
+    } else {
+        updateProxySelect(true);
+    }
+
 }
 
 function addProxyCancel() {
-    swtichTab(1);
+    switchTab(1);
 }
 
-function EditUserAgentOK() {
-    swtichTab(1);
-    bg.saveConf("userAgents", document.getElementById("userAgentsTextArea").value);
-    populateUserAgents(true);
-}
-
-
-
-function testMyProxies() {
-    $("#typeOfProxies").val(bg.loadConf("proxiesType"));
-    $("#testmyproxiesForm").submit();
-}
-
-function excludeOptions() {
-    swtichTab(10);
-    document.getElementById("excludeListTextarea").value = bg.loadConf("excludeList");
-}
-
-function excludeOK() {
-    saveExclude();
-    selectProxyChange();
-    swtichTab(1);
+function loadConf() {
+    return 5;
 }
 
 
-function saveExclude() {
-    bg.saveConf("excludeList", document.getElementById("excludeListTextarea").value);
-}
+function sanitizeProxies(prox) {
 
+    try {
+        prox = prox.toString().replace(/ /g, "");
+        proxiesArr = prox.split("\n");
+        proxiesNew = [];
+        for (i = 0; i < proxiesArr.length; i++) {
+            if (proxiesArr[i].length > 5) {
 
-function loadProxiesFromUrl() {
-
-    var proxyMode = 0;
-    if (document.getElementById("proxyMode1").checked) {
-        proxyMode = 1;
-    }
-
-    bg.saveConf("proxyMode", proxyMode);
-    bg.saveConf("getLocations", document.getElementById("getLocations").checked);
-    document.getElementById("stopLocations").addEventListener("click", stopLocations);
-    bg.saveConf("proxiesType", document.getElementById("proxiesType").selectedIndex);
-
-    if (proxyMode === 1) {
-
-        bg.saveConf("urlProxies", $("#urlProxies").val());
-        bg.saveConf("urlMinutes", $("#urlMinutes").val());
-        if (bg.loadConf("urlMinutes") < 2) {
-            bg.saveConf("urlMinutes", 600);
+                proxiesNew.push(proxiesArr[i]);
+            }
         }
-        if ($("#urlProxies").val().length < 6) {
-            alert("Invalid URL");
-        } else if ($("#urlMinutes").val() < 2) {
-            alert("Minutes must be at least 2");
+        return proxiesNew.join("\n");
+    } catch (e) {
+        return prox;
+    }
+}
+
+
+function saveOpt(opt, val) {
+    let storageObject = {};
+    storageObject[opt] = val;
+
+    chrome.storage.local.set(storageObject, function () {
+
+        console.log('saveOpt=' + opt + " val=" + val);
+        chrome.runtime.sendMessage({action: 'updateBadgeText', text: ""});
+
+    });
+}
+
+function loadOpt(val, callback) {
+    chrome.storage.local.get(null, function (result) {
+
+        callback(result || []);
+    });
+}
+
+function makeVal(v, m) {
+    if (typeof v === 'undefined') {
+        {
+            return m;
+
+        }
+    } else {
+        return v;
+    }
+}
+
+async function updateProxySelect(refresh = false) {
+
+    clearForm('selectProxy');
+
+    loadOpt("proxiesList", async (res) => {
+
+        proxies = makeVal(res['proxiesList'], []);
+        locations = makeVal(res['locations'], []);
+        agents = makeVal(res['userAgents'], []);
+        rotating = makeVal(res['rotating'], false);
+
+        rotationDelay = makeVal(res['rotationDelay'], 5);
+        shufflerotate = makeVal(res['rotationDelay'], false);
+        cyclerotate = makeVal(res['cyclerotate'], false);
+
+        console.log("cyclerotate " + cyclerotate);
+
+        if (!agents || agents.length < 1) {
+            agentsOpt = agentsDefaults.slice();
+
         } else {
-            bg.loadProxiesFromUrl();
+            agentsOpt = agents.slice();
+
         }
+
+        //agentsOpt.unshift("RANDOM ON EACH PROXY CHANGE");
+
+        agentsOpt.unshift("NO CHANGE");
+
+        populateSelect("selectUserAgent", agentsOpt);
+        document.getElementById('selectUserAgent').selectedIndex = res['agentIndex'];
+
+
+        document.getElementById('proxiesType').selectedIndex = res['proxiesType'];
+        proxiesTypeChanged();
+
+        document.getElementById('autoReload').checked = res['autoReload'];
+
+        var select = document.getElementById('selectProxy');
+        var fragment = document.createDocumentFragment();
+
+        appendOption(fragment, 'NO PROXY', 'NOPROXY', 'noproxy.png', proxies.length > 0 ? 'No proxy' : 'No proxy. Add proxies from "edit" --------->>>');
+        appendOption(fragment, `AUTOROTATE EVERY ` + rotationDelay + ` SECONDS`, 'AUTOROTATE', 'rotate.png', `Autorotate every ` + rotationDelay + ` seconds`);
+
+        var selectedProxyIndex = res['selectedProxyIndex'];
+
+
+        var n = 2;
+        proxies.forEach(proxy => {
+            if (proxy.length > 0) {
+
+                if ((selectedProxyIndex != 1 || !rotating) && proxy == res['selectedProxy']) {
+                    selectedProxyIndex = n;
+                }
+                const option = createProxyOption(proxy);
+                fragment.appendChild(option);
+                n++;
+            }
+        });
+
+
+        if (res['selectedProxy'] === "NOPROXY") {
+            selectedProxyIndex = 0;
+        }
+
+
+        select.appendChild(fragment);
+
+        select.selectedIndex = selectedProxyIndex;
+        $('.selectpicker').selectpicker('refresh');
+
+        if (refresh) {
+            $('.selectpicker').selectpicker('toggle');
+        }
+
+        if (rotating) {
+            showHide('proxyRotationDiv', 'proxySelectDiv');
+        } else {
+            showHide('proxySelectDiv', 'proxyRotationDiv');
+        }
+
+        $("#proxiesHidden").val(proxies.join(";"));
+
+    });
+
+}
+
+function populateSelect(selectId, options) {
+    const selectElement = document.getElementById(selectId);
+
+    // Clear any existing options
+    selectElement.innerHTML = "";
+
+    // Create and append the options
+    options.forEach(option => {
+        const optionElement = document.createElement("option");
+        optionElement.value = option;
+        optionElement.textContent = option;
+        selectElement.appendChild(optionElement);
+    });
+}
+
+function createProxyOption(proxy) {
+    const option = document.createElement('option');
+    const parsedProxy = parseProxy(proxy);
+    const location = locations[parsedProxy[0]];
+    const locationTxt = location ? `<img style='width:40px;height:20px;margin-right:5px;' src='${getImageURL(`img/flags/${location.toLowerCase()}.png`)}'>` : '';
+    option.value = proxy;
+    const label = parsedProxy.length === 5 ? `${parsedProxy[4]} (${parsedProxy[0]})` : parsedProxy.length === 3 ? `${parsedProxy[2]} (${parsedProxy[0]})` : parsedProxy[0];
+    option.setAttribute('data-content', locationTxt + label);
+    return option;
+}
+
+function getImageURL(img) {
+    if (firefox) {
+        return   browser.runtime.getURL(img)
     } else {
-        bg.saveConf("proxiesList", bg.sanitizeProxies(document.getElementById("proxiesTextArea").value));
-        editProxyListOK();
+        return chrome.runtime.getURL(img);
     }
-}
-
-
-function editProxyListOK(changeProxy = true) {
-
-    if (bg.loadConf("getLocations")) {
-        swtichTab(9);
-        bg.getLocations();
-    } else {
-        editProxyListOKFinish(changeProxy);
-}
-}
-
-function editProxyListOKFinish(changeProxy = true) {
-    swtichTab(1);
-    populateProxies(changeProxy);
-    document.getElementById("stopLocations").removeEventListener("click", stopLocations);
 }
 
 function clearForm(id) {
@@ -425,221 +617,165 @@ function clearForm(id) {
     }
 }
 
-
-function showHide(id1, id2) {
-    document.getElementById(id1).style.display = "block";
-    document.getElementById(id2).style.display = "none";
-
-    if (id2 == "proxyRotationDiv") {
-        $("#testMyProxies").show();
-    }
-
-    if (id1 == "proxyRotationDiv") {
-        $("#testMyProxies").hide();
-    }
+function validateIPv4(ip) {
+    ip = ip.split(":");
+    ip = ip[0];
+    const ipv4Regex = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+    return ipv4Regex.test(ip);
 }
 
-function stopRotation() {
-    bg.stopProxyRotation();
-    document.getElementById("selectProxy").selectedIndex = bg.loadConf("selectedProxyIndex");
-    $('.selectpicker').selectpicker('refresh');
-    showHide('proxySelectDiv', 'proxyRotationDiv');
+function parseProxy(proxy) {
+    var p = proxy.split(':'), out = [];
+    if (p.length > 7) {
+        var ip = [];
+        for (i = 0; i < 8; i++) {
+            ip.push(p[i].trim());
+        }
+        out[0] = ip.join(":");
+        out[1] = p[8].trim();
+        out[2] = p[9].trim();
+        out[3] = p[10].trim();
+        if (p.length > 11) {
+            out[4] = p[11].trim();
+        }
 
+    } else {
+        for (i = 0; i < p.length; i++) {
+            out[i] = p[i].trim();
+        }
+    }
+    return out;
+}
+function showSpinner() {
+    document.getElementById('spinner').style.display = 'block';
 }
 
-function getImageURL(img) {
-    if (bg.brs === "firefox") {
-        return   browser.runtime.getURL(img)
-    } else {
-        return chrome.extension.getURL(img);
-    }
+function hideSpinner() {
+    document.getElementById('spinner').style.display = 'none';
 }
 
-
-function populateProxies(reset) {
-
-
-    if (Math.floor((Math.random() * 50) + 1) == 1) {
-        //  document.getElementById("mod").style.display = "block";
-    } else {
-        //  document.getElementById("mod").style.display = "none";
-    }
-
-    clearForm("selectProxy");
-    var proxies = bg.loadConf("proxiesList").split('\n');
-    var select = document.getElementById("selectProxy");
-    var option = document.createElement("option");
-    option.text = 'NO PROXY';
-    option.value = 'NOPROXY';
-    select.appendChild(option);
-    locationTxt = "<img style='width:40px;height:20px;margin-right:5px;' src='" + getImageURL("img/flags/noproxy.png'").toLowerCase() + "'>";
-    if (proxies[0].length > 1) {
-        option.setAttribute("data-content", locationTxt + 'No proxy');
-    } else {
-        option.setAttribute("data-content", locationTxt + 'No proxy. Add proxies from Edit -->');
-    }
-
-    var option2 = document.createElement("option");
-    option2.text = 'AUTOROTATE EVERY ' + bg.loadConf("rotationDelay") + ' SECONDS';
-    option2.value = 'AUTOROTATE';
-    locationTxt = "<img style='width:40px;height:20px;margin-right:5px;' src='" + getImageURL("img/flags/rotate.png'").toLowerCase() + "'>";
-    option2.setAttribute("data-content", locationTxt + 'Autorotate every ' + bg.loadConf("rotationDelay") + ' seconds');
-    select.appendChild(option2);
+function sanitizeProxies(prox, limit = 4) {
 
     try {
-        locations = JSON.parse(bg.loadConf("locations"));
+        if (limit != 1) {
+            prox = prox.toString().replace(/ /g, "");
+        }
+        proxiesArr = prox.split("\n");
+        proxiesNew = [];
+        for (i = 0; i < proxiesArr.length; i++) {
+            if (proxiesArr[i].length > limit) {
+                proxiesNew.push(proxiesArr[i]);
+            }
+        }
+        return proxiesNew;
     } catch (e) {
-        locations = [];
-        locationTxt = '';
-    }
-
-    for (i = 0; i < proxies.length; i++) {
-        if (proxies[i].length > 0) {
-            var option = document.createElement("option");
-            p = bg.parseProxy(proxies[i]);
-            if (locations[p[0]] !== undefined) {
-                locationTxt = "<img title='" + locations[p[0]] + "' style='width:40px;height:20px;margin-right:5px;' src='" + getImageURL("img/flags/" + locations[p[0]] + ".png'").toLowerCase() + "'>";
-            } else {
-                locationTxt = '';
-            }
-
-            option.value = proxies[i];
-
-            if (p.length == 5) {
-                label = p[4] + ' (' + p[0] + ')';
-            } else if (p.length == 3) {
-                label = p[2] + ' (' + p[0] + ')';
-            } else {
-                label = p[0];
-            }
-            option.setAttribute("data-content", locationTxt + label);
-            select.appendChild(option);
-        }
-    }
-
-    if (reset) {
-        if (proxies[0].length > 1) {
-            bg.saveConf("selectedProxyIndex", 0);
-
-        } else {
-            bg.saveConf("selectedProxyIndex", 0);
-            bg.cancelProxy();
-        }
-    } else {
-        if (bg.rotateTimerOn) {
-            showHide('proxyRotationDiv', 'proxySelectDiv');
-        }
-    }
-    selectCurrentProxy();
-    $("#proxiesHidden").val(proxies.join(";"));
-
+        return prox;
 }
-
-function selectCurrentProxy() {
-    $('.selectpicker').selectpicker('val', bg.loadConf("lastProxy"));
-    if (document.getElementById("selectProxy").selectedIndex === -1) {
-        document.getElementById("selectProxy").title = bg.loadConf("lastProxy");
-    } else {
-        document.getElementById("selectProxy").title = "";
-    }
-
-    $('.selectpicker').selectpicker('refresh');
-    $('.selectpicker').selectpicker('toggle');
-}
-
-function populateUserAgents(reset) {
-    clearForm("selectUserAgent");
-    var select = document.getElementById("selectUserAgent");
-    var agents = document.getElementById("userAgentsTextArea").value.trim().split('\n');
-    var option = document.createElement("option");
-    option.text = 'No change';
-    option.value = 'NOCHANGE';
-    select.appendChild(option);
-    var option = document.createElement("option");
-    option.text = 'Random from the list on each proxy change';
-    option.value = 'RANDOM';
-    select.appendChild(option);
-
-    for (i = 0; i < agents.length; i++) {
-        if (agents[i].length > 0) {
-            var option = document.createElement("option");
-            option.text = agents[i];
-            option.value = agents[i];
-            select.appendChild(option);
-        }
-    }
-
-    if (reset) {
-        bg.saveConf("selectedAgentIndex", 0);
-    }
-    select.selectedIndex = bg.loadConf("selectedAgentIndex");
 }
 
 
-function notify(title, text) {
-    bg.notify(title, text);
+
+
+function selectUserAgent() {
+    saveOpt("agent", document.getElementById("selectUserAgent").value);
+    saveOpt("agentIndex", document.getElementById("selectUserAgent").selectedIndex);
+    updateRules(document.getElementById("selectUserAgent").value);
 }
+
+
+
+function setProxy(proxy) {
+    saveOpt("selectedProxy", proxy);
+    chrome.runtime.sendMessage({action: 'putProxy', text: proxy});
+}
+
+
+
+
+
 
 
 function autoReloadClick() {
-    bg.saveConf("autoReload", document.getElementById("autoReload").checked);
+    saveOpt("autoReload", document.getElementById("autoReload").checked);
 }
 
-function loadProxies() {
-    document.getElementById("autoReload").checked = bg.loadConf("autoReload");
-    rotationDelay = bg.loadConf("rotationDelay", 60);
-    document.getElementById("proxiesTextArea").value = bg.loadConf("proxiesList");
-    document.getElementById("userAgentsTextArea").value = bg.loadConf("userAgents");
+function selectProxyChange() {
 
-}
+    const selectProxy = document.getElementById("selectProxy");
+    saveOpt("selectedProxyIndex", selectProxy.selectedIndex);
 
+    if (select.value == "NOPROXY") {
+//        bg.cancelProxy();
+        setProxy(selectProxy.value);
 
-function validateProxy(proxy, port) {
-    var error = "";
-
-    if (proxy.length < 7) {
-        error = "proxy " + proxy + " is invalid";
-    } else if (isNaN(parseInt(port))) {
-        error = "port " + port + " is invalid";
-    }
-    return error;
-}
-
-function switchProxyMode(mode) {
-
-    if (mode === 1) {
-        showHide("proxyArea1", "proxyArea0");
-        $("#proxyMode1").prop("checked", true);
-        $("#urlProxies").val(bg.loadConf("urlProxies"));
-        $("#urlMinutes").val(bg.loadConf("urlMinutes"));
-
+    } else if (select.value == "AUTOROTATE") {
+        document.getElementById("rotateSeconds").value = rotationDelay;
+        document.getElementById('cyclerotate').checked = cyclerotate;
+        document.getElementById('shufflerotate').checked = shufflerotate;
+        switchTab(5);
     } else {
-        bg.stopLoadProxiesTimer();
-        showHide("proxyArea0", "proxyArea1");
-        $("#proxyMode0").prop("checked", true);
+
+        setProxy(selectProxy.value);
+
+    }
+
+
+}
+
+async function fetchProxyLocations(proxies, callback) {
+
+    proxies = proxies.filter(validateIPv4);
+    const ips = proxies.map(proxy => parseProxy(proxy)[0]).join('-'); // Extract IPs and join them with '-'
+    const url = `https://testmyproxies.com/_scripts/showLocations.php?ips=${ips}`;
+    var locations = {};
+    try {
+        const response = await fetch(url);
+        locations = await response.json();
+        saveOpt("locations", locations);
+        return callback(); // Adjust based on the actual API response structure
+    } catch (error) {
+
+        console.log('Error fetching proxy locations:' + error);
+
+        saveOpt("locations", locations);
+        callback();
     }
 }
 
-function shouldDisplayPromo() {
+function appendOption(fragment, text, value, imgSrc, contentText) {
+    const option = document.createElement('option');
+    option.text = text;
+    option.value = value;
+    const locationTxt = `<img style='width:40px;height:20px;margin-right:5px;' src='${getImageURL(`img/flags/${imgSrc}`)}'>`;
+    option.setAttribute('data-content', locationTxt + contentText);
+    fragment.appendChild(option);
+}
 
 
-    if (Math.round(Math.random() * 33) === 3 && bg.proxyUsed > 10) {
-        if (bg.brs === 'fireox') {
-            promo = [
-                '<b>If you like the plugin and you want more features, please help us with a  <u> <a href="https://addons.mozilla.org/ro/firefox/addon/bp_proxy_switcher/" target="_blank">review here</a></u></b>',
-                '<b>Need a VPN too, please check our <u><a href="https://buyVPN.com/panel/link.php?id=1" target="_blank">VPN</a></u>'
-            ];
-        } else {
-            promo = [
-                '<b>If you like the plugin and you want more features, please help us with a  <u> <a href="https://chrome.google.com/webstore/detail/bp-proxy-switcher/bapeomcobggcdleohggighcjbeeglhbn/reviews" target="_blank">review here</a></u></b>',
-                '<b>Need a VPN too, please check our <u><a href="https://buyVPN.com/panel/link.php?id=1" target="_blank">VPN</a></u>'
-            ];
-        }
-        document.getElementById("promo").innerHTML = promo[Math.floor(Math.random() * promo.length)];
-        document.getElementById("promo").style.display = "block";
-    } else {
-        document.getElementById("promo").style.display = "none";
+chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+    if (request.action === "startRotationBg") {
+        rotating = true;
+    } else if (request.action === "stopRotationBg") {
+        stopRotationBg();
+        rotating = false;
+    } else if (rotating && request.action === "rotatingSeconds") {
+        updateRotatingText(request.data);
+
     }
+    updateProxySelect();
+
+});
+
+function updateRotatingText(sec) {
+
+
+    document.getElementById("rotatingText").innerHTML = "Rotating to the next proxy in <b>" + sec + " seconds</b>";
+    document.getElementById("stopRotation").style.display = "block";
+
+
+
 
 }
+
+document.addEventListener('DOMContentLoaded', bpOnLoad, false);
 

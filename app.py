@@ -337,7 +337,9 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, startTime, pr
         random_ua = ua.random
         print(random_ua)
     options = webdriver.ChromeOptions()
+    options.browser_version = "129"
     options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_argument("--disable-features=DisableDisableExtensionsExceptCommandLineSwitch,DisableLoadExtensionCommandLineSwitch")
     options.add_argument("--log-level=3")
     
     options.add_argument(f'--user-agent={str(random_ua)}')
@@ -351,6 +353,7 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, startTime, pr
     entradas_ext_path = os.path.join(os.getcwd(), 'entradas_extension')
     extension_path = os.path.join(os.getcwd(), 'BP-Proxy-Switcher-Chrome')
     command = f"--load-extension={extension_path},{nopecha_path},{entradas_ext_path}"
+    except_command = f"--disable-extensions-except={extension_path},{nopecha_path},{entradas_ext_path}"
 
     # Add VPN extension if needed
     if isVpn:
@@ -362,6 +365,8 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, startTime, pr
 
     # Add the extensions command
     options.add_argument(command)
+    options.add_argument(except_command)
+    
 
     # Disable password manager popups
     prefs = {
@@ -370,12 +375,7 @@ def run(thread_number, initialUrl, isSlack, browsersAmount, isVpn, startTime, pr
     }
     options.add_experimental_option("prefs", prefs)
     options.set_capability("goog:loggingPrefs", {"performance": "ALL"})
-
-    # Specify the path to chromedriver in the current working directory
-    chromedriver_path = os.path.join(os.getcwd(), 'chromedriver.exe')
     
-    # Create a Service object using the chromedriver path
-    service = Service(executable_path=chromedriver_path)
     if os.getlogin() in ['pc','S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10', 'S11', 'S12', 'S13', 'S14', 'S15',
     'S3U1', 'S3U2', 'S3U3', 'S3U4', 'S3U5', 'S3U6', 'S3U7', 'S3U8', 'S3U9', 'S3U10', 'S3U11', 'S3U12', 'S3U13', 'S3U14', 'S3U15', 'S3U16',
     'Admin3']:
