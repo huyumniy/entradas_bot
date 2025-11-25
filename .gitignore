@@ -11,3 +11,4 @@ slack_token.txt
 slack-post/
 venv/
 .env
+proxy/
